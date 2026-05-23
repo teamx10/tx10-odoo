@@ -139,3 +139,86 @@ class TestSolarAiAgent(TransactionCase):
             result = self.agent.safe_execute_tool("find_records", {"model": "project.project", "query": "x"})
         self.assertFalse(result.get("ok"))
         self.assertEqual(result.get("error"), "access_denied")
+
+
+@tagged("solar_ai", "post_install", "-at_install")
+class TestAgentStepController(HttpCase):
+
+    def _step(self, params):
+        resp = self.url_open(
+            "/solar_ai/agent/step",
+            data=json_mod.dumps({"jsonrpc": "2.0", "method": "call", "id": 1, "params": params}),
+            headers={"Content-Type": "application/json"},
+        )
+        return resp.json()
+
+    def setUp(self):
+        super().setUp()
+        self.env["ir.config_parameter"].sudo().set_param("solar_ai.openrouter_api_key", "test-key")
+        self.authenticate("admin", "admin")
+
+    @patch("odoo.addons.solar_ai.models.solar_ai_service.SolarAiService.chat_with_tools")
+    def test_step_creates_chat_and_returns_assistant_text(self, mock_cwt):
+        mock_cwt.return_value = {
+            "content": "Привіт! Чим можу допомогти?",
+            "tool_calls": [],
+            "finish_reason": "stop",
+            "usage": {"total_tokens": 25},
+            "elapsed_ms": 100,
+        }
+        result = self._step({"message": "Привіт"})
+        data = result.get("result", {})
+        self.assertEqual(data.get("status"), "ok")
+        self.assertIsNotNone(data.get("chat_id"))
+        self.assertIn("Привіт", data.get("assistant_text", ""))
+
+    @patch("odoo.addons.solar_ai.models.solar_ai_service.SolarAiService.chat_with_tools")
+    def test_step_rate_limited_returns_rate_limited_status(self, mock_cwt):
+        """When rate limit is exhausted, LLM is never called."""
+        with patch("odoo.addons.solar_ai.controllers._guards.check_rate_limit", return_value=False):
+            result = self._step({"message": "Hi"})
+        data = result.get("result", {})
+        self.assertEqual(data.get("status"), "error")
+        self.assertEqual(data.get("error"), "rate_limited")
+        mock_cwt.assert_not_called()
+
+    @patch("odoo.addons.solar_ai.models.solar_ai_service.SolarAiService.chat_with_tools")
+    def test_step_budget_exhausted_blocks_llm(self, mock_cwt):
+        """When total_tokens >= MAX_TOKENS, no LLM call is made."""
+        chat = self.env["solar.ai.chat"].sudo().create({
+            "name": "Exhausted", "user_id": self.env.ref("base.user_admin").id,
+            "total_tokens": 100001, "budget_state": "exhausted",
+        })
+        result = self._step({"message": "Hi", "chat_id": chat.id})
+        data = result.get("result", {})
+        self.assertEqual(data.get("error"), "budget_exhausted")
+        mock_cwt.assert_not_called()
+
+    def test_step_no_api_key_returns_error(self):
+        """Missing API key returns error without calling LLM."""
+        self.env["ir.config_parameter"].sudo().set_param("solar_ai.openrouter_api_key", "")
+        result = self._step({"message": "Hi"})
+        data = result.get("result", {})
+        self.assertIn(data.get("status"), ("error", "ok"))
+
+    @patch("odoo.addons.solar_ai.models.solar_ai_service.SolarAiService.chat_with_tools")
+    def test_build_messages_with_tool_results_from_browser(self, mock_cwt):
+        """tool_results injected by the browser appear in the next LLM call."""
+        captured_messages = []
+
+        def capture_and_return(messages, tools=None, **kw):
+            captured_messages.extend(messages)
+            return {"content": "done", "tool_calls": [], "finish_reason": "stop",
+                    "usage": {"total_tokens": 5}, "elapsed_ms": 10}
+
+        mock_cwt.side_effect = capture_and_return
+        chat = self.env["solar.ai.chat"].sudo().create({
+            "name": "T", "user_id": self.env.ref("base.user_admin").id,
+        })
+        self._step({
+            "chat_id": chat.id,
+            "message": None,
+            "tool_results": [{"tool_call_id": "call_99", "content": "navigated"}],
+        })
+        tool_msgs = [m for m in captured_messages if m.get("role") == "tool"]
+        self.assertTrue(any(m.get("tool_call_id") == "call_99" for m in tool_msgs))

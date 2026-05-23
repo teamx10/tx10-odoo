@@ -1,0 +1,195 @@
+import datetime as dt
+import logging
+
+from odoo import fields, http
+from odoo.exceptions import AccessError
+from odoo.http import request
+
+from odoo.addons.solar_ai.controllers import _guards
+
+_logger = logging.getLogger(__name__)
+
+SYSTEM_PROMPT_TEMPLATE = (
+    "You are a helpful AI assistant embedded in an Odoo ERP system for solar project management. "
+    "Respond in {lang}. You can search and navigate records. Always confirm before writing."
+)
+
+
+class AiChatController(http.Controller):
+
+    @http.route("/solar_ai/agent/step", type="jsonrpc", auth="user", methods=["POST"], csrf=False)
+    def agent_step(self, message=None, chat_id=None, tool_results=None, **_kw):
+        env = request.env
+        _guards.check_authorized(env)
+        if not _guards.check_rate_limit(env.user.id):
+            return {"status": "error", "error": "rate_limited"}
+
+        user_text = (message or "").strip()
+        if not chat_id and not user_text:
+            return {"status": "error", "error": "empty_message"}
+
+        ChatModel = env["solar.ai.chat"]
+        if chat_id:
+            chat = ChatModel.browse(int(chat_id))
+            if not chat.exists() or chat.user_id.id != env.user.id:
+                return {"status": "error", "error": "chat_not_found"}
+        else:
+            chat = ChatModel.create({
+                "name": user_text[:80],
+                "user_id": env.user.id,
+            })
+
+        # Budget guard
+        if chat.budget_state == "exhausted" or chat.total_tokens >= chat.MAX_TOKENS:
+            return {"status": "error", "error": "budget_exhausted", "chat_id": chat.id}
+
+        if user_text:
+            env["solar.ai.message"].create({
+                "chat_id": chat.id, "role": "user", "content": user_text, "status": "done",
+            })
+
+        messages = self._build_messages(chat, user_text, tool_results)
+
+        lang = env.user.lang or "uk_UA"
+        lang_label = "Ukrainian" if lang.startswith("uk") else "Russian" if lang.startswith("ru") else lang
+        system_prompt = SYSTEM_PROMPT_TEMPLATE.format(lang=lang_label)
+        messages = [{"role": "system", "content": system_prompt}] + messages
+
+        agent = env["solar.ai.agent"].with_context(current_chat_id=chat.id)
+        tools = agent._get_tool_definitions()
+
+        service = env["solar.ai.service"]
+        llm_result = service.chat_with_tools(messages=messages, tools=tools)
+
+        tool_calls_to_store = llm_result.get("tool_calls") or None
+        env["solar.ai.message"].create({
+            "chat_id": chat.id,
+            "role": "assistant",
+            "content": llm_result.get("content"),
+            "tool_calls_json": tool_calls_to_store,
+            "status": "done",
+            "prompt_tokens": (llm_result.get("usage") or {}).get("prompt_tokens", 0),
+            "completion_tokens": (llm_result.get("usage") or {}).get("completion_tokens", 0),
+            "model_used": "default",
+        })
+
+        # BLOCKER #4: atomic token budget update — avoids concurrent overspend
+        tokens_used = (llm_result.get("usage") or {}).get("total_tokens", 0)
+        env.cr.execute(
+            """
+            UPDATE solar_ai_chat
+            SET total_tokens   = total_tokens + %(tokens)s,
+                round_count    = round_count + 1,
+                last_activity  = (NOW() AT TIME ZONE 'UTC'),
+                budget_state   = CASE
+                    WHEN total_tokens + %(tokens)s >= %(max)s THEN 'exhausted'
+                    ELSE 'ok'
+                END
+            WHERE id = %(chat_id)s
+            RETURNING total_tokens, budget_state
+            """,
+            {"tokens": tokens_used, "max": chat.MAX_TOKENS, "chat_id": chat.id},
+        )
+        row = env.cr.fetchone()
+        env["solar.ai.chat"].invalidate_model()
+        budget_exhausted = bool(row and row[1] == "exhausted")
+
+        finish_reason = llm_result.get("finish_reason", "stop")
+        if finish_reason in ("stop", "error") or llm_result.get("error"):
+            return {
+                "status": "ok" if not llm_result.get("error") else "error",
+                "assistant_text": llm_result.get("content"),
+                "tool_results": [],
+                "client_tool_calls": [],
+                "chat_id": chat.id,
+                "error": llm_result.get("error"),
+                "budget_exhausted": budget_exhausted,
+            }
+
+        # Process tool_calls
+        server_results = []
+        client_calls = []
+        for tc in (llm_result.get("tool_calls") or []):
+            tool_name = tc.get("name", "")
+            args = tc.get("parsed_args") or {}
+            tool_call_id = tc.get("id", "")
+
+            if tc.get("parse_error"):
+                server_results.append({
+                    "tool_call_id": tool_call_id,
+                    "content": f"Error: could not parse tool arguments — {tc['parse_error']}",
+                })
+                continue
+
+            if tool_name in agent._CLIENT_TOOLS:
+                client_calls.append({"tool_call_id": tool_call_id, "name": tool_name, "args": args})
+                continue
+
+            result = agent.safe_execute_tool(tool_name, args, tool_call_id=tool_call_id)
+            content = str(result.get("result", result.get("error", "error")))
+            server_results.append({"tool_call_id": tool_call_id, "content": content})
+
+            env["solar.ai.message"].create({
+                "chat_id": chat.id, "role": "tool",
+                "tool_call_id": tool_call_id, "tool_name": tool_name,
+                "content": content[:2000], "status": "done" if result.get("ok") else "error",
+            })
+
+        return {
+            "status": "needs_continuation",
+            "assistant_text": llm_result.get("content"),
+            "tool_results": server_results,
+            "client_tool_calls": client_calls,
+            "chat_id": chat.id,
+            "budget_exhausted": budget_exhausted,
+        }
+
+    def _build_messages(self, chat, user_text, tool_results=None):
+        """Reconstruct message history from DB for the LLM context window.
+
+        MAJOR #12: search(limit=20) instead of message_ids[-20:] — avoids loading all rows.
+        MAJOR #14: reconstruct LLM wire format from stored arguments_str.
+        """
+        recent = request.env["solar.ai.message"].search(
+            [("chat_id", "=", chat.id)],
+            order="id desc",
+            limit=20,
+        )
+        messages = []
+        for msg in reversed(recent):
+            if msg.role == "user":
+                messages.append({"role": "user", "content": msg.content or ""})
+            elif msg.role == "assistant":
+                entry = {"role": "assistant", "content": msg.content}
+                if msg.tool_calls_json:
+                    entry["tool_calls"] = [
+                        {
+                            "id": tc.get("id", ""),
+                            "type": "function",
+                            "function": {
+                                "name": tc.get("name", ""),
+                                "arguments": tc.get("arguments_str", "{}"),
+                            },
+                        }
+                        for tc in msg.tool_calls_json
+                    ]
+                messages.append(entry)
+            elif msg.role == "tool" and msg.tool_call_id:
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": msg.tool_call_id,
+                    "content": msg.content or "",
+                })
+
+        if tool_results:
+            for tr in tool_results:
+                messages.append({
+                    "role": "tool",
+                    "tool_call_id": tr.get("tool_call_id", ""),
+                    "content": str(tr.get("content", "")),
+                })
+
+        if user_text:
+            messages.append({"role": "user", "content": user_text})
+
+        return messages
