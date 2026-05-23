@@ -60,4 +60,68 @@
     <field name="solar_address">Suvorovsʹkyy district, Odesa</field>
   </record>
 
+  <!-- ─── Tasks (required for checklist items) ─────────── -->
+  <record id="solar_demo_task_residential_survey" model="project.task">
+    <field name="name">Site Survey</field>
+    <field name="project_id" ref="solar_demo_project_residential"/>
+  </record>
+
+  <record id="solar_demo_task_commercial_install" model="project.task">
+    <field name="name">Panel Installation</field>
+    <field name="project_id" ref="solar_demo_project_commercial"/>
+  </record>
+
+  <record id="solar_demo_task_groundmount_handover" model="project.task">
+    <field name="name">Client Handover</field>
+    <field name="project_id" ref="solar_demo_project_groundmount"/>
+  </record>
+
+  <!-- ─── Solar Documents ───────────────────────────────── -->
+  <!-- Project A: Residential survey — 2 docs (approved + review) -->
+  <record id="solar_demo_doc_residential_bill" model="solar.document">
+    <field name="name">Electricity Bill Jan 2026</field>
+    <field name="project_id" ref="solar_demo_project_residential"/>
+    <field name="document_type_id" ref="solar_project.solar_dtype_bill_electricity"/>
+    <field name="state">approved</field>
+    <field name="valid_from" eval="(DateTime.today() - relativedelta(months=3)).strftime('%Y-%m-%d')"/>
+  </record>
+
+  <record id="solar_demo_doc_residential_roof" model="solar.document">
+    <field name="name">Roof Measurement Report</field>
+    <field name="project_id" ref="solar_demo_project_residential"/>
+    <field name="document_type_id" ref="solar_project.solar_dtype_roof_measurement"/>
+    <field name="state">review</field>
+  </record>
+
+  <!-- Project B: Commercial install — 2 docs (approved + draft) -->
+  <record id="solar_demo_doc_commercial_permit" model="solar.document">
+    <field name="name">Grid Connection Permit</field>
+    <field name="project_id" ref="solar_demo_project_commercial"/>
+    <field name="document_type_id" ref="solar_project.solar_dtype_permit"/>
+    <field name="state">approved</field>
+  </record>
+
+  <record id="solar_demo_doc_commercial_sld" model="solar.document">
+    <field name="name">Single-Line Electrical Diagram v2</field>
+    <field name="project_id" ref="solar_demo_project_commercial"/>
+    <field name="document_type_id" ref="solar_project.solar_dtype_single_line_diagram"/>
+    <field name="state">draft</field>
+  </record>
+
+  <!-- Project C: Ground mount handover — 2 docs (approved) -->
+  <record id="solar_demo_doc_groundmount_handover" model="solar.document">
+    <field name="name">Handover Act signed</field>
+    <field name="project_id" ref="solar_demo_project_groundmount"/>
+    <field name="document_type_id" ref="solar_project.solar_dtype_handover_act"/>
+    <field name="state">approved</field>
+    <field name="valid_from" eval="(DateTime.today() - relativedelta(days=10)).strftime('%Y-%m-%d')"/>
+  </record>
+
+  <record id="solar_demo_doc_groundmount_commissioning" model="solar.document">
+    <field name="name">Commissioning Test Report</field>
+    <field name="project_id" ref="solar_demo_project_groundmount"/>
+    <field name="document_type_id" ref="solar_project.solar_dtype_commissioning_report"/>
+    <field name="state">approved</field>
+  </record>
+
 </odoo>
