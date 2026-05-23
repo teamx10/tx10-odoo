@@ -3,7 +3,7 @@ from unittest.mock import MagicMock, patch
 
 from odoo.tests import HttpCase, TransactionCase, tagged
 
-from odoo.addons.solar_ai.controllers.olg_proxy import (
+from odoo.addons.solar_ai.controllers._guards import (
     RATE_LIMIT_MAX_CALLS,
     _check_rate_limit,
     _rate_limit_state,
@@ -356,3 +356,11 @@ class TestOlgProxyHardening(HttpCase):
         self.assertEqual(resp.status_code, 200)
         body = resp.json()
         self.assertNotIn("TypeError", json.dumps(body))
+
+    def test_guards_module_exports_symbols(self):
+        """Regression: _guards.py must export same symbols for backward compat."""
+        from odoo.addons.solar_ai.controllers._guards import (  # noqa: F401
+            RATE_LIMIT_MAX_CALLS,
+            _check_rate_limit,
+            _rate_limit_state,
+        )

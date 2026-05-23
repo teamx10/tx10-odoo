@@ -1,48 +1,20 @@
 import logging
-import time
-from collections import defaultdict
-from threading import Lock
 
 from odoo import http
-from odoo.exceptions import AccessError
 from odoo.http import request
+
+from odoo.addons.solar_ai.controllers._guards import (
+    RATE_LIMIT_MAX_CALLS,  # noqa: F401 — re-exported for tests
+    _check_rate_limit,
+    _rate_limit_state,
+    check_authorized as _check_authorized,
+    check_rate_limit,
+)
 
 _logger = logging.getLogger(__name__)
 
 MAX_PROMPT_CHARS = 8000
 MAX_HISTORY_TURNS = 10
-RATE_LIMIT_WINDOW_SEC = 60
-RATE_LIMIT_MAX_CALLS = 20
-
-_rate_limit_lock = Lock()
-_rate_limit_state: dict[int, list[float]] = defaultdict(list)
-
-
-def _check_authorized(env):
-    """Only project-manager (or admin) can spend org LLM budget."""
-    if env.user._is_admin():
-        return
-    if not env.user.has_group("project.group_project_manager"):
-        msg = "Solar AI: this endpoint requires the Project Manager group."
-        raise AccessError(msg)
-
-
-def _check_rate_limit(user_id):
-    """Sliding window rate limit per user."""
-    now = time.monotonic()
-    cutoff = now - RATE_LIMIT_WINDOW_SEC
-    with _rate_limit_lock:
-        calls = _rate_limit_state[user_id]
-        calls[:] = [t for t in calls if t > cutoff]
-        if not calls:
-            # Reclaim memory for inactive users
-            _rate_limit_state.pop(user_id, None)
-            _rate_limit_state[user_id].append(now)
-            return True
-        if len(calls) >= RATE_LIMIT_MAX_CALLS:
-            return False
-        calls.append(now)
-    return True
 
 
 class SolarAiOlgProxy(http.Controller):
