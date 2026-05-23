@@ -140,6 +140,49 @@ class TestSolarAiAgent(TransactionCase):
         self.assertFalse(result.get("ok"))
         self.assertEqual(result.get("error"), "access_denied")
 
+    def test_update_record_returns_pending_confirmation(self):
+        """update_record proposes change, does NOT write immediately."""
+        project = self.env["project.project"].create({"name": "Update Test"})
+        chat = self.env["solar.ai.chat"].create({"name": "T", "user_id": self.env.user.id})
+        result = self.env["solar.ai.agent"].with_context(current_chat_id=chat.id).safe_execute_tool(
+            "update_record",
+            {"model": "project.project", "id": project.id, "values": {"name": "Renamed"}},
+            tool_call_id="call_upd",
+        )
+        self.assertEqual(result.get("status"), "pending_confirmation")
+        project.invalidate_model()
+        self.assertEqual(project.name, "Update Test")  # NOT yet renamed
+
+    def test_schedule_activity_returns_pending_confirmation(self):
+        """schedule_activity creates pending_confirmation message without writing activity."""
+        project = self.env["project.project"].create({"name": "Activity Test"})
+        chat = self.env["solar.ai.chat"].create({"name": "T", "user_id": self.env.user.id})
+        result = self.env["solar.ai.agent"].with_context(current_chat_id=chat.id)._tool_schedule_activity(
+            {"model": "project.project", "id": project.id,
+             "summary": "Review project", "date_deadline": "2026-12-01"},
+            chat_id=chat.id,
+        )
+        self.assertEqual(result.get("status"), "pending_confirmation")
+
+    def test_schedule_activity_rejects_malformed_date(self):
+        """Malformed date_deadline raises ValueError before any ORM call."""
+        chat = self.env["solar.ai.chat"].create({"name": "T", "user_id": self.env.user.id})
+        project = self.env["project.project"].create({"name": "P"})
+        with self.assertRaises(ValueError):
+            self.env["solar.ai.agent"].with_context(current_chat_id=chat.id)._tool_schedule_activity(
+                {"model": "project.project", "id": project.id,
+                 "summary": "x", "date_deadline": "not-a-date"},
+                chat_id=chat.id,
+            )
+
+    def test_create_record_chat_id_missing_raises(self):
+        """create_record called without current_chat_id context raises ValueError."""
+        with self.assertRaises(ValueError):
+            self.env["solar.ai.agent"]._execute_tool(
+                "create_record",
+                {"model": "project.task", "values": {"name": "Task"}},
+            )
+
 
 @tagged("solar_ai", "post_install", "-at_install")
 class TestAgentStepController(HttpCase):

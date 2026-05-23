@@ -116,6 +116,54 @@ class SolarAiAgent(models.AbstractModel):
                     },
                 },
             },
+            {
+                "type": "function",
+                "function": {
+                    "name": "create_record",
+                    "description": "Create a new record. Will ask for user confirmation before executing.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "model": {"type": "string"},
+                            "values": {"type": "object", "description": "Field values for the new record"},
+                        },
+                        "required": ["model", "values"],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "update_record",
+                    "description": "Update an existing record. Will ask for user confirmation.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "model": {"type": "string"},
+                            "id": {"type": "integer"},
+                            "values": {"type": "object"},
+                        },
+                        "required": ["model", "id", "values"],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "schedule_activity",
+                    "description": "Schedule a todo activity on a project or task. Will ask for confirmation.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "model": {"type": "string"},
+                            "id": {"type": "integer"},
+                            "summary": {"type": "string", "description": "Activity summary (max 200 chars)"},
+                            "date_deadline": {"type": "string", "description": "Deadline in YYYY-MM-DD format"},
+                        },
+                        "required": ["model", "id", "summary"],
+                    },
+                },
+            },
         ]
 
     # ------------------------------------------------------------------
@@ -129,7 +177,9 @@ class SolarAiAgent(models.AbstractModel):
         "get_record_summary": "read",
         "navigate_to_record": "navigate",
         "open_model_list": "navigate",
-        # write tools registered in Phase B
+        "create_record": "write",
+        "update_record": "write",
+        "schedule_activity": "write",
     }
 
     def _check_capability(self, tool_name, model=None):
@@ -154,6 +204,19 @@ class SolarAiAgent(models.AbstractModel):
             return self._tool_get_record_summary(args)
         if tool_name in self._CLIENT_TOOLS:
             return {"client_tool": tool_name, "args": args}
+
+        # Write tools — require current_chat_id in context (BLOCKER #5)
+        chat_id = self._context.get("current_chat_id")
+        if not chat_id:
+            raise ValueError("chat_id is required for write tools — call with_context(current_chat_id=N)")
+
+        if tool_name == "create_record":
+            return self._tool_create_record(args, chat_id)
+        if tool_name == "update_record":
+            return self._tool_update_record(args, chat_id)
+        if tool_name == "schedule_activity":
+            return self._tool_schedule_activity(args, chat_id)
+
         raise ValueError(f"Unhandled tool: {tool_name!r}")
 
     def safe_execute_tool(self, tool_name, args, tool_call_id=""):
@@ -163,7 +226,10 @@ class SolarAiAgent(models.AbstractModel):
         """
         try:
             result = self._execute_tool(tool_name, args)
-            return {"ok": True, "result": result, "tool_call_id_placeholder": tool_call_id}
+            out = {"ok": True, "result": result, "tool_call_id_placeholder": tool_call_id}
+            if isinstance(result, dict) and "status" in result:
+                out["status"] = result["status"]
+            return out
         except ValueError as exc:
             _logger.warning("solar_ai agent: tool %r validation error: %s", tool_name, exc)
             return {"ok": False, "error": str(exc), "tool_call_id_placeholder": tool_call_id}
@@ -196,6 +262,99 @@ class SolarAiAgent(models.AbstractModel):
             return {"error": "record_not_found", "id": record_id, "model": model}
         data = record.read(safe_fields)[0]
         return {k: (v[1] if isinstance(v, tuple) else v) for k, v in data.items()}
+
+    # ------------------------------------------------------------------
+    # Tool implementations (WRITE, Phase B)
+    # ------------------------------------------------------------------
+
+    def _tool_create_record(self, args, chat_id):
+        model = args["model"]
+        values = args.get("values") or {}
+        self._validate_write_values(model, values)
+
+        model_label = self.env[model]._description or model
+        field_lines = []
+        for k, v in values.items():
+            field_obj = self.env[model]._fields.get(k)
+            label = field_obj.string if field_obj else k
+            field_lines.append(f"  {label}: {v!r}")
+        summary = f"Створити {model_label}:\n" + "\n".join(field_lines)
+
+        chat = self.env["solar.ai.chat"].browse(int(chat_id))
+        msg = self.env["solar.ai.message"].create({
+            "chat_id": chat.id,
+            "role": "assistant",
+            "status": "pending_confirmation",
+            "proposed_action": {"model": model, "method": "create", "values": values},
+            "action_summary": summary,
+            "content": summary,
+        })
+        return {"status": "pending_confirmation", "message_id": msg.id, "summary": summary}
+
+    def _tool_update_record(self, args, chat_id):
+        model = args["model"]
+        record_id = int(args["id"])
+        values = args.get("values") or {}
+        self._validate_write_values(model, values)
+
+        record = self.env[model].browse(record_id)
+        if not record.exists():
+            return {"error": "record_not_found"}
+
+        summary = f"Оновити {record.display_name} ({model} #{record_id}):\n"
+        for k, v in values.items():
+            field_obj = self.env[model]._fields.get(k)
+            label = field_obj.string if field_obj else k
+            summary += f"  {label}: {v!r}\n"
+
+        chat = self.env["solar.ai.chat"].browse(int(chat_id))
+        msg = self.env["solar.ai.message"].create({
+            "chat_id": chat.id,
+            "role": "assistant",
+            "status": "pending_confirmation",
+            "proposed_action": {"model": model, "method": "write", "id": record_id, "values": values},
+            "action_summary": summary,
+            "content": summary,
+        })
+        return {"status": "pending_confirmation", "message_id": msg.id, "summary": summary}
+
+    def _tool_schedule_activity(self, args, chat_id):
+        """MAJOR #15: validate summary and date_deadline before any ORM call."""
+        model = args["model"]
+        record_id = int(args["id"])
+
+        summary = str(args.get("summary") or "").strip()
+        if len(summary) > 200:
+            raise ValueError("summary too long (max 200 chars)")
+
+        date_str = args.get("date_deadline")
+        if date_str:
+            try:
+                date.fromisoformat(str(date_str))
+            except (ValueError, TypeError):
+                raise ValueError(f"date_deadline must be YYYY-MM-DD, got: {date_str!r}")
+
+        self._check_capability("schedule_activity", model=model)
+        record = self.env[model].browse(record_id)
+        if not record.exists():
+            return {"error": "record_not_found"}
+
+        action_summary = (f"Запланувати активність на {record.display_name}:\n"
+                          f"  {summary}\n  Дедлайн: {date_str or 'не вказано'}")
+        chat = self.env["solar.ai.chat"].browse(int(chat_id))
+        msg = self.env["solar.ai.message"].create({
+            "chat_id": chat.id,
+            "role": "assistant",
+            "status": "pending_confirmation",
+            "proposed_action": {
+                "model": model, "method": "activity_schedule",
+                "id": record_id, "summary": summary,
+                "date": date_str,
+            },
+            "action_summary": action_summary,
+            "content": action_summary,
+        })
+        return {"status": "pending_confirmation", "message_id": msg.id, "summary": action_summary}
 
     # ------------------------------------------------------------------
     # Validation helper (shared by read and write tools)
