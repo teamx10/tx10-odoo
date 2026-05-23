@@ -222,3 +222,18 @@ class TestAgentStepController(HttpCase):
         })
         tool_msgs = [m for m in captured_messages if m.get("role") == "tool"]
         self.assertTrue(any(m.get("tool_call_id") == "call_99" for m in tool_msgs))
+
+
+@tagged("solar_ai", "post_install", "-at_install")
+class TestAiAssistantTour(HttpCase):
+    def setUp(self):
+        super().setUp()
+        self.env["ir.config_parameter"].sudo().set_param("solar_ai.openrouter_api_key", "test-key")
+
+    def test_panel_opens_and_closes(self):
+        """Tour: systray button toggles the panel open/closed."""
+        self.start_tour("/odoo", "ai_panel_open_close", login="admin")
+
+    def test_empty_send_is_noop(self):
+        """Tour: Send button disabled when textarea is empty — no error emitted."""
+        self.start_tour("/odoo", "ai_panel_send_empty_ignored", login="admin")

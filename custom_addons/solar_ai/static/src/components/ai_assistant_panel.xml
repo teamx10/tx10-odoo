@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<templates xml:space="preserve">
+    <t t-name="solar_ai.AiAssistantPanel">
+        <div id="o-solar-ai-panel" class="o-solar-ai-panel" role="dialog" aria-label="Solar AI Assistant">
+            <div class="o-solar-ai-header d-flex align-items-center justify-content-between p-2">
+                <span class="fw-bold">🤖 Solar AI</span>
+                <button class="btn-close btn-sm" t-on-click="props.onClose" aria-label="Close assistant"/>
+            </div>
+
+            <div class="o-solar-ai-messages p-2" role="log" aria-live="polite" aria-relevant="additions">
+                <t t-if="state.messages.length === 0">
+                    <div class="o-solar-ai-empty text-muted small">
+                        <p>Я можу:</p>
+                        <ul>
+                            <t t-foreach="examplePrompts" t-as="prompt" t-key="prompt">
+                                <li>
+                                    <a href="#" t-on-click.prevent="() => sendMessage(prompt)">
+                                        <t t-esc="prompt"/>
+                                    </a>
+                                </li>
+                            </t>
+                        </ul>
+                    </div>
+                </t>
+
+                <t t-foreach="state.messages" t-as="msg" t-key="msg_index">
+                    <div t-attf-class="o-solar-ai-msg o-solar-ai-msg--#{msg.role} mb-2" role="group">
+                        <div class="o-solar-ai-bubble p-2 rounded">
+                            <t t-esc="msg.content"/>
+                        </div>
+                    </div>
+                </t>
+
+                <div t-if="state.thinking" class="o-solar-ai-thinking text-muted small" aria-live="polite">
+                    Думаю…
+                </div>
+            </div>
+
+            <div class="o-solar-ai-composer p-2 border-top">
+                <div class="d-flex gap-2">
+                    <textarea
+                        class="form-control form-control-sm"
+                        placeholder="Запитайте мене…"
+                        t-model="state.inputValue"
+                        t-on-keydown="onKeydown"
+                        t-ref="composer"
+                        rows="2"
+                        t-att-disabled="state.thinking"
+                        aria-label="Message to Solar AI"
+                    />
+                    <button
+                        class="btn btn-primary btn-sm"
+                        t-on-click="() => sendMessage()"
+                        t-att-disabled="state.thinking or !state.inputValue.trim()"
+                        aria-label="Send"
+                    >→</button>
+                </div>
+            </div>
+        </div>
+    </t>
+</templates>

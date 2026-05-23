@@ -10,6 +10,18 @@
         "security/solar_ai_security.xml",
         "data/config_params.xml",
     ],
+    "assets": {
+        "web.assets_backend": [
+            "solar_ai/static/src/systray/ai_assistant_systray.js",
+            "solar_ai/static/src/systray/ai_assistant_systray.xml",
+            "solar_ai/static/src/components/ai_assistant_panel.js",
+            "solar_ai/static/src/components/ai_assistant_panel.xml",
+            "solar_ai/static/src/components/ai_assistant_panel.scss",
+        ],
+        "web.assets_tests": [
+            "solar_ai/static/tests/tours/ai_panel.js",
+        ],
+    },
     "installable": True,
     "application": False,
     "license": "LGPL-3",
