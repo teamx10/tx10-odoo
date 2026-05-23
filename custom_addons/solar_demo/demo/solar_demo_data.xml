@@ -124,4 +124,49 @@
     <field name="state">approved</field>
   </record>
 
+  <!-- ─── Checklist Items ───────────────────────────────── -->
+  <!-- Residential: Site Survey task -->
+  <record id="solar_demo_check_survey_1" model="solar.checklist.item">
+    <field name="name">Roof dimensions measured</field>
+    <field name="task_id" ref="solar_demo_task_residential_survey"/>
+    <field name="sequence">10</field>
+    <field name="is_done" eval="True"/>
+  </record>
+
+  <record id="solar_demo_check_survey_2" model="solar.checklist.item">
+    <field name="name">Shading analysis completed</field>
+    <field name="task_id" ref="solar_demo_task_residential_survey"/>
+    <field name="sequence">20</field>
+    <field name="is_done" eval="False"/>
+  </record>
+
+  <record id="solar_demo_check_survey_3" model="solar.checklist.item">
+    <field name="name">Electricity meter photo taken</field>
+    <field name="task_id" ref="solar_demo_task_residential_survey"/>
+    <field name="sequence">30</field>
+    <field name="is_done" eval="True"/>
+  </record>
+
+  <!-- Commercial: Panel Installation task -->
+  <record id="solar_demo_check_install_1" model="solar.checklist.item">
+    <field name="name">Mounting structure installed</field>
+    <field name="task_id" ref="solar_demo_task_commercial_install"/>
+    <field name="sequence">10</field>
+    <field name="is_done" eval="True"/>
+  </record>
+
+  <record id="solar_demo_check_install_2" model="solar.checklist.item">
+    <field name="name">Panels wired and tested</field>
+    <field name="task_id" ref="solar_demo_task_commercial_install"/>
+    <field name="sequence">20</field>
+    <field name="is_done" eval="True"/>
+  </record>
+
+  <record id="solar_demo_check_install_3" model="solar.checklist.item">
+    <field name="name">Inverter commissioning complete</field>
+    <field name="task_id" ref="solar_demo_task_commercial_install"/>
+    <field name="sequence">30</field>
+    <field name="is_done" eval="False"/>
+  </record>
+
 </odoo>
