@@ -122,6 +122,87 @@ class SolarAiService(models.AbstractModel):
             "elapsed_ms": elapsed_ms,
         }
 
+    def chat_with_tools(self, messages, tools=None, model=None, timeout=25):
+        """LLM round-trip that parses tool_calls from the response.
+
+        Returns:
+            {
+                "content": str | None,
+                "tool_calls": list[{id, name, arguments_str, parsed_args, parse_error?}],
+                "finish_reason": str,
+                "usage": dict,
+                "elapsed_ms": int,
+                "error": str,  # present on terminal errors
+            }
+        """
+        headers = self._build_headers()
+        if not headers:
+            return {"content": "", "tool_calls": [], "finish_reason": "error",
+                    "usage": {}, "elapsed_ms": 0, "error": "no_api_key"}
+
+        model = model or self._get_config("default_model", "anthropic/claude-sonnet-4-5")
+        payload = {"model": model, "messages": messages}
+        if tools:
+            payload["tools"] = tools
+
+        started = datetime.now()
+        try:
+            resp = httpx.post(
+                self._get_config("openrouter_base_url", "https://openrouter.ai/api/v1") + "/chat/completions",
+                headers=headers, json=payload, timeout=timeout,
+            )
+            resp.raise_for_status()
+        except httpx.HTTPStatusError as exc:
+            _logger.error("solar_ai: OpenRouter HTTP error %s: %s", exc.response.status_code, exc.response.text[:300])
+            return {"content": "", "tool_calls": [], "finish_reason": "error",
+                    "usage": {}, "elapsed_ms": 0, "error": str(exc)}
+        except httpx.RequestError as exc:
+            _logger.error("solar_ai: OpenRouter request error: %s", exc)
+            return {"content": "", "tool_calls": [], "finish_reason": "error",
+                    "usage": {}, "elapsed_ms": 0, "error": str(exc)}
+
+        elapsed_ms = int((datetime.now() - started).total_seconds() * 1000)
+        data = resp.json()
+        choices = data.get("choices") or []
+        if not choices:
+            return {"content": "", "tool_calls": [], "finish_reason": "error",
+                    "usage": data.get("usage", {}), "elapsed_ms": elapsed_ms, "error": "empty_choices"}
+
+        choice = choices[0]
+        message = choice.get("message") or {}
+        finish_reason = choice.get("finish_reason", "stop")
+        content = message.get("content")
+
+        # Parse tool_calls — arguments is a JSON STRING from the model.
+        # Do NOT store the raw tc object — not guaranteed JSON-serializable for fields.Json.
+        raw_tool_calls = message.get("tool_calls") or []
+        parsed_calls = []
+        for tc in raw_tool_calls:
+            func = tc.get("function") or {}
+            entry = {
+                "id": tc.get("id", ""),
+                "name": func.get("name", ""),
+                "arguments_str": func.get("arguments", "{}"),
+            }
+            try:
+                entry["parsed_args"] = json.loads(func.get("arguments", "{}"))
+            except (json.JSONDecodeError, TypeError) as exc:
+                entry["parsed_args"] = None
+                entry["parse_error"] = str(exc)
+                _logger.warning("solar_ai: could not parse tool_call args for %s: %s", entry["name"], exc)
+            parsed_calls.append(entry)
+
+        result = {
+            "content": content,
+            "tool_calls": parsed_calls,
+            "finish_reason": finish_reason,
+            "usage": data.get("usage", {}),
+            "elapsed_ms": elapsed_ms,
+        }
+        if finish_reason in ("length", "content_filter"):
+            result["error"] = f"terminated_{finish_reason}"
+        return result
+
     def classify_document_text(self, text, max_chars=4000):
         """Classify document text, return dict with 'document_type_code' and 'confidence'."""
         truncated = text[:max_chars] if len(text) > max_chars else text

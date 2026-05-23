@@ -65,6 +65,72 @@ class TestSolarAiService(TransactionCase):
         )
         self.assertEqual(result.get("document_type_code"), "bill_electricity")
 
+    @patch("httpx.post")
+    def test_chat_with_tools_returns_tool_calls(self, mock_post):
+        """chat_with_tools extracts tool_calls from LLM response."""
+        mock_post.return_value.status_code = 200
+        mock_post.return_value.json.return_value = {
+            "choices": [{
+                "message": {
+                    "role": "assistant",
+                    "content": None,
+                    "tool_calls": [{
+                        "id": "call_abc123",
+                        "type": "function",
+                        "function": {"name": "find_records", "arguments": '{"model": "res.partner", "query": "Ivanov"}'},
+                    }],
+                },
+                "finish_reason": "tool_calls",
+            }],
+            "usage": {"prompt_tokens": 20, "completion_tokens": 10, "total_tokens": 30},
+        }
+        self.env["ir.config_parameter"].set_param("solar_ai.openrouter_api_key", "test-key")
+        result = self.env["solar.ai.service"].chat_with_tools(
+            messages=[{"role": "user", "content": "Find Ivanov"}],
+            tools=[{"type": "function", "function": {"name": "find_records", "parameters": {}}}],
+        )
+        self.assertEqual(result["finish_reason"], "tool_calls")
+        self.assertEqual(len(result["tool_calls"]), 1)
+        self.assertEqual(result["tool_calls"][0]["id"], "call_abc123")
+
+    @patch("httpx.post")
+    def test_chat_with_tools_handles_malformed_json_args(self, mock_post):
+        """Malformed tool arguments don't raise — return error result."""
+        mock_post.return_value.status_code = 200
+        mock_post.return_value.json.return_value = {
+            "choices": [{
+                "message": {
+                    "role": "assistant",
+                    "content": None,
+                    "tool_calls": [{"id": "x", "type": "function", "function": {"name": "bad", "arguments": "INVALID_JSON{"}}],
+                },
+                "finish_reason": "tool_calls",
+            }],
+            "usage": {},
+        }
+        self.env["ir.config_parameter"].set_param("solar_ai.openrouter_api_key", "test-key")
+        result = self.env["solar.ai.service"].chat_with_tools(
+            messages=[{"role": "user", "content": "hi"}], tools=[],
+        )
+        self.assertEqual(result["finish_reason"], "tool_calls")
+        self.assertIsNone(result["tool_calls"][0].get("parsed_args"))
+        self.assertIn("parse_error", result["tool_calls"][0])
+
+    @patch("httpx.post")
+    def test_chat_with_tools_handles_finish_reason_length(self, mock_post):
+        """finish_reason=length returns error key so caller can surface notice."""
+        mock_post.return_value.status_code = 200
+        mock_post.return_value.json.return_value = {
+            "choices": [{"message": {"role": "assistant", "content": "cut off..."}, "finish_reason": "length"}],
+            "usage": {},
+        }
+        self.env["ir.config_parameter"].set_param("solar_ai.openrouter_api_key", "test-key")
+        result = self.env["solar.ai.service"].chat_with_tools(
+            messages=[{"role": "user", "content": "hi"}], tools=[],
+        )
+        self.assertEqual(result["finish_reason"], "length")
+        self.assertIn("error", result)
+
 
 @tagged("solar_ai", "post_install", "-at_install")
 class TestOlgProxy(HttpCase):
