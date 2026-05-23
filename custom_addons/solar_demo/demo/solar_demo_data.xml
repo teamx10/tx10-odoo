@@ -1,3 +1,63 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+
+  <!-- ─── Clients ─────────────────────────────────────── -->
+  <record id="solar_demo_partner_sonnenhaus" model="res.partner">
+    <field name="name">Sonnenhaus GmbH</field>
+    <field name="is_company" eval="True"/>
+    <field name="city">Berlin</field>
+    <field name="country_id" ref="base.de"/>
+  </record>
+
+  <record id="solar_demo_partner_greenvalley" model="res.partner">
+    <field name="name">Green Valley Farm</field>
+    <field name="is_company" eval="True"/>
+    <field name="city">Kyiv</field>
+    <field name="country_id" ref="base.ua"/>
+  </record>
+
+  <record id="solar_demo_partner_riverside" model="res.partner">
+    <field name="name">Riverside Logistics</field>
+    <field name="is_company" eval="True"/>
+    <field name="city">Odesa</field>
+    <field name="country_id" ref="base.ua"/>
+  </record>
+
+  <!-- ─── Projects ─────────────────────────────────────── -->
+  <record id="solar_demo_project_residential" model="project.project">
+    <field name="name">Sonnenhaus — 8 kWp Residential</field>
+    <field name="partner_id" ref="solar_demo_partner_sonnenhaus"/>
+    <field name="solar_stage">survey</field>
+    <field name="solar_roof_type">metal</field>
+    <field name="solar_grid_type">on_grid</field>
+    <field name="solar_kw_capacity">8.0</field>
+    <field name="solar_budget_usd">12000</field>
+    <field name="solar_address">Musterstraße 12, 10115 Berlin</field>
+    <field name="solar_latitude">52.520008</field>
+    <field name="solar_longitude">13.404954</field>
+  </record>
+
+  <record id="solar_demo_project_commercial" model="project.project">
+    <field name="name">Green Valley — 50 kWp Agri-PV</field>
+    <field name="partner_id" ref="solar_demo_partner_greenvalley"/>
+    <field name="solar_stage">installation</field>
+    <field name="solar_roof_type">flat</field>
+    <field name="solar_grid_type">hybrid</field>
+    <field name="solar_kw_capacity">50.0</field>
+    <field name="solar_battery_kwh">30.0</field>
+    <field name="solar_budget_usd">65000</field>
+    <field name="solar_address">Boryspil district, Kyiv region</field>
+  </record>
+
+  <record id="solar_demo_project_groundmount" model="project.project">
+    <field name="name">Riverside — 120 kWp Ground Mount</field>
+    <field name="partner_id" ref="solar_demo_partner_riverside"/>
+    <field name="solar_stage">handover</field>
+    <field name="solar_roof_type">ground</field>
+    <field name="solar_grid_type">on_grid</field>
+    <field name="solar_kw_capacity">120.0</field>
+    <field name="solar_budget_usd">140000</field>
+    <field name="solar_address">Suvorovsʹkyy district, Odesa</field>
+  </record>
+
 </odoo>
