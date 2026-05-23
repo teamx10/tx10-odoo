@@ -5,7 +5,10 @@ import { _t } from "@web/core/l10n/translation";
 
 export class AiAssistantPanel extends Component {
     static template = "solar_ai.AiAssistantPanel";
-    static props = { onClose: Function };
+    static props = {
+        onClose: Function,
+        chatId: { optional: true },
+    };
 
     setup() {
         this.rpc = useService("rpc");
@@ -14,7 +17,8 @@ export class AiAssistantPanel extends Component {
             messages: [],
             inputValue: "",
             thinking: false,
-            chatId: null,
+            chatId: this.props.chatId || null,
+            resuming: Boolean(this.props.chatId),
         });
         this.composerRef = useRef("composer");
         onMounted(() => this.composerRef.el?.focus());
@@ -35,6 +39,7 @@ export class AiAssistantPanel extends Component {
         this.state.messages.push({ role: "user", content: text });
         this.state.inputValue = "";
         this.state.thinking = true;
+        this.state.resuming = false;
 
         await this._runAgentLoop(text, null);
         this.state.thinking = false;

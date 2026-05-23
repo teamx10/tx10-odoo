@@ -9,6 +9,7 @@
         "security/ir.model.access.csv",
         "security/solar_ai_security.xml",
         "data/config_params.xml",
+        "views/solar_ai_chat_views.xml",
     ],
     "assets": {
         "web.assets_backend": [

@@ -8,7 +8,13 @@
             </div>
 
             <div class="o-solar-ai-messages p-2" role="log" aria-live="polite" aria-relevant="additions">
-                <t t-if="state.messages.length === 0">
+                <t t-if="state.resuming">
+                    <div class="o-solar-ai-resume-hint text-muted small fst-italic mb-2">
+                        Продовжуємо попередній чат. Напишіть, щоб продовжити…
+                    </div>
+                </t>
+
+                <t t-if="!state.resuming and state.messages.length === 0">
                     <div class="o-solar-ai-empty text-muted small">
                         <p>Я можу:</p>
                         <ul>

@@ -5,14 +5,18 @@
             <button
                 class="o-solar-ai-systray-btn btn btn-sm"
                 t-on-click="toggle"
-                t-att-aria-expanded="state.open"
+                t-att-aria-expanded="panelState.open"
                 aria-controls="o-solar-ai-panel"
                 aria-label="Open Solar AI assistant"
                 title="Solar AI"
             >
                 🤖
             </button>
-            <AiAssistantPanel t-if="state.open" onClose="() => this.toggle()"/>
+            <AiAssistantPanel
+                t-if="panelState.open"
+                chatId="panelState.chatId"
+                onClose="() => this.toggle()"
+            />
         </div>
     </t>
 </templates>
