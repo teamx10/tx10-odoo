@@ -1,14 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
-  <!-- Logo: res.company.logo is related to partner.image_1920 -->
-  <record id="base.main_partner" model="res.partner">
-    <field name="image_1920" type="base64" file="solar_demo/data/img/isolar_logo.png"/>
-  </record>
+  <!-- noupdate="1": branding is set once at install and never re-applied on
+       -u, so an operator who promotes this DB and renames the company keeps
+       their changes. (Demo data already loads noupdate=True; explicit here
+       to document the set-once intent.) -->
+  <data noupdate="1">
+    <!-- Logo: res.company.logo is related to partner.image_1920 -->
+    <record id="base.main_partner" model="res.partner">
+      <field name="image_1920" type="base64" file="solar_demo/data/img/isolar_logo.png"/>
+    </record>
 
-  <!-- Company branding: name + report/UI colour palette -->
-  <record id="base.main_company" model="res.company">
-    <field name="name">iSolar Energy</field>
-    <field name="primary_color">#1f6e43</field>
-    <field name="secondary_color">#f5a623</field>
-  </record>
+    <!-- Company branding: name + report/UI colour palette -->
+    <record id="base.main_company" model="res.company">
+      <field name="name">iSolar Energy</field>
+      <field name="primary_color">#1f6e43</field>
+      <field name="secondary_color">#f5a623</field>
+    </record>
+  </data>
 </odoo>

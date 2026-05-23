@@ -1,8 +1,16 @@
-from odoo.tests import TransactionCase, tagged
+from psycopg2 import IntegrityError
+
+from odoo.tests import TransactionCase, loaded_demo_data, tagged
+from odoo.tools import mute_logger
 
 
 @tagged("solar_demo", "post_install", "-at_install")
 class TestSolarDemoBranding(TransactionCase):
+    def setUp(self):
+        super().setUp()
+        if not loaded_demo_data(self.env):
+            self.skipTest("Branding assertions require demo data (run with --with-demo)")
+
     def test_company_name(self):
         company = self.env.ref("base.main_company")
         self.assertEqual(company.name, "iSolar Energy")
@@ -22,6 +30,11 @@ class TestSolarDemoBranding(TransactionCase):
 
 @tagged("solar_demo", "post_install", "-at_install")
 class TestSolarDemoData(TransactionCase):
+    def setUp(self):
+        super().setUp()
+        if not loaded_demo_data(self.env):
+            self.skipTest("Demo records require demo data (run with --with-demo)")
+
     def test_demo_partners_exist(self):
         """All three demo clients must resolve by xmlid."""
         for xmlid in (
@@ -93,17 +106,21 @@ class TestSolarDemoConstraints(TransactionCase):
         super().setUpClass()
         cls.project = cls.env["project.project"].create({"name": "_constraint_test"})
 
+    @mute_logger("odoo.sql_db")
     def test_document_requires_type(self):
-        with self.assertRaises(Exception):
+        with self.assertRaises(IntegrityError):
             self.env["solar.document"].create({
                 "name": "Doc Without Type",
                 "project_id": self.project.id,
                 # document_type_id intentionally absent
             })
+            self.env.flush_all()
 
+    @mute_logger("odoo.sql_db")
     def test_checklist_requires_task(self):
-        with self.assertRaises(Exception):
+        with self.assertRaises(IntegrityError):
             self.env["solar.checklist.item"].create({
                 "name": "Item Without Task",
                 # task_id intentionally absent
             })
+            self.env.flush_all()
