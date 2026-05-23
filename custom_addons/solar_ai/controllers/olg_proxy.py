@@ -6,9 +6,9 @@ from odoo.http import request
 from odoo.addons.solar_ai.controllers._guards import (
     RATE_LIMIT_MAX_CALLS,  # noqa: F401 — re-exported for tests
     _check_rate_limit,
-    _rate_limit_state,
+)
+from odoo.addons.solar_ai.controllers._guards import (
     check_authorized as _check_authorized,
-    check_rate_limit,
 )
 
 _logger = logging.getLogger(__name__)

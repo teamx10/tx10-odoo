@@ -16,7 +16,8 @@ def check_authorized(env):
     if env.user._is_admin():
         return
     if not env.user.has_group("project.group_project_manager"):
-        raise AccessError("Solar AI: this endpoint requires the Project Manager group.")
+        err = "Solar AI: this endpoint requires the Project Manager group."
+        raise AccessError(err)
 
 
 def check_rate_limit(user_id) -> bool:

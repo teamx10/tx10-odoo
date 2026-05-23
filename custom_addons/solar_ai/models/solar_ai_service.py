@@ -137,10 +137,19 @@ class SolarAiService(models.AbstractModel):
         """
         headers = self._build_headers()
         if not headers:
-            return {"content": "", "tool_calls": [], "finish_reason": "error",
-                    "usage": {}, "elapsed_ms": 0, "error": "no_api_key"}
+            return {
+                "content": "",
+                "tool_calls": [],
+                "finish_reason": "error",
+                "usage": {},
+                "elapsed_ms": 0,
+                "error": "no_api_key",
+            }
 
-        model = model or self._get_config("default_model", "anthropic/claude-sonnet-4-5")
+        model = model or self._get_config(
+            "default_model",
+            "anthropic/claude-sonnet-4-5",
+        )
         payload = {"model": model, "messages": messages}
         if tools:
             payload["tools"] = tools
@@ -148,25 +157,50 @@ class SolarAiService(models.AbstractModel):
         started = datetime.now()
         try:
             resp = httpx.post(
-                self._get_config("openrouter_base_url", "https://openrouter.ai/api/v1") + "/chat/completions",
-                headers=headers, json=payload, timeout=timeout,
+                self._get_config("openrouter_base_url", "https://openrouter.ai/api/v1")
+                + "/chat/completions",
+                headers=headers,
+                json=payload,
+                timeout=timeout,
             )
             resp.raise_for_status()
         except httpx.HTTPStatusError as exc:
-            _logger.error("solar_ai: OpenRouter HTTP error %s: %s", exc.response.status_code, exc.response.text[:300])
-            return {"content": "", "tool_calls": [], "finish_reason": "error",
-                    "usage": {}, "elapsed_ms": 0, "error": str(exc)}
+            _logger.error(
+                "solar_ai: OpenRouter HTTP error %s: %s",
+                exc.response.status_code,
+                exc.response.text[:300],
+            )
+            return {
+                "content": "",
+                "tool_calls": [],
+                "finish_reason": "error",
+                "usage": {},
+                "elapsed_ms": 0,
+                "error": str(exc),
+            }
         except httpx.RequestError as exc:
             _logger.error("solar_ai: OpenRouter request error: %s", exc)
-            return {"content": "", "tool_calls": [], "finish_reason": "error",
-                    "usage": {}, "elapsed_ms": 0, "error": str(exc)}
+            return {
+                "content": "",
+                "tool_calls": [],
+                "finish_reason": "error",
+                "usage": {},
+                "elapsed_ms": 0,
+                "error": str(exc),
+            }
 
         elapsed_ms = int((datetime.now() - started).total_seconds() * 1000)
         data = resp.json()
         choices = data.get("choices") or []
         if not choices:
-            return {"content": "", "tool_calls": [], "finish_reason": "error",
-                    "usage": data.get("usage", {}), "elapsed_ms": elapsed_ms, "error": "empty_choices"}
+            return {
+                "content": "",
+                "tool_calls": [],
+                "finish_reason": "error",
+                "usage": data.get("usage", {}),
+                "elapsed_ms": elapsed_ms,
+                "error": "empty_choices",
+            }
 
         choice = choices[0]
         message = choice.get("message") or {}
@@ -189,7 +223,11 @@ class SolarAiService(models.AbstractModel):
             except (json.JSONDecodeError, TypeError) as exc:
                 entry["parsed_args"] = None
                 entry["parse_error"] = str(exc)
-                _logger.warning("solar_ai: could not parse tool_call args for %s: %s", entry["name"], exc)
+                _logger.warning(
+                    "solar_ai: could not parse tool_call args for %s: %s",
+                    entry["name"],
+                    exc,
+                )
             parsed_calls.append(entry)
 
         result = {

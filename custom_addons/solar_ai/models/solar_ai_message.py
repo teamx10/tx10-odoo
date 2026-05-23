@@ -6,7 +6,12 @@ class SolarAiMessage(models.Model):
     _description = "Solar AI — Message Turn"
     _order = "id asc"
 
-    chat_id = fields.Many2one("solar.ai.chat", required=True, ondelete="cascade", index=True)
+    chat_id = fields.Many2one(
+        "solar.ai.chat",
+        required=True,
+        ondelete="cascade",
+        index=True,
+    )
     role = fields.Selection(
         [("user", "User"), ("assistant", "Assistant"), ("tool", "Tool Result")],
         required=True,
@@ -16,8 +21,13 @@ class SolarAiMessage(models.Model):
     tool_call_id = fields.Char()
     tool_name = fields.Char()
     status = fields.Selection(
-        [("done", "Done"), ("pending_confirmation", "Pending Confirmation"),
-         ("confirmed", "Confirmed"), ("rejected", "Rejected"), ("error", "Error")],
+        [
+            ("done", "Done"),
+            ("pending_confirmation", "Pending Confirmation"),
+            ("confirmed", "Confirmed"),
+            ("rejected", "Rejected"),
+            ("error", "Error"),
+        ],
         default="done",
     )
     proposed_action = fields.Json()

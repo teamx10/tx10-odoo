@@ -16,8 +16,13 @@ SYSTEM_PROMPT_TEMPLATE = (
 
 
 class AiChatController(http.Controller):
-
-    @http.route("/solar_ai/agent/step", type="jsonrpc", auth="user", methods=["POST"], csrf=False)
+    @http.route(
+        "/solar_ai/agent/step",
+        type="jsonrpc",
+        auth="user",
+        methods=["POST"],
+        csrf=False,
+    )
     def agent_step(self, message=None, chat_id=None, tool_results=None, **_kw):
         env = request.env
         _guards.check_authorized(env)
@@ -34,24 +39,37 @@ class AiChatController(http.Controller):
             if not chat.exists() or chat.user_id.id != env.user.id:
                 return {"status": "error", "error": "chat_not_found"}
         else:
-            chat = ChatModel.create({
-                "name": user_text[:80],
-                "user_id": env.user.id,
-            })
+            chat = ChatModel.create(
+                {
+                    "name": user_text[:80],
+                    "user_id": env.user.id,
+                },
+            )
 
         # Budget guard
         if chat.budget_state == "exhausted" or chat.total_tokens >= chat.MAX_TOKENS:
             return {"status": "error", "error": "budget_exhausted", "chat_id": chat.id}
 
         if user_text:
-            env["solar.ai.message"].create({
-                "chat_id": chat.id, "role": "user", "content": user_text, "status": "done",
-            })
+            env["solar.ai.message"].create(
+                {
+                    "chat_id": chat.id,
+                    "role": "user",
+                    "content": user_text,
+                    "status": "done",
+                },
+            )
 
         messages = self._build_messages(chat, user_text, tool_results)
 
         lang = env.user.lang or "uk_UA"
-        lang_label = "Ukrainian" if lang.startswith("uk") else "Russian" if lang.startswith("ru") else lang
+        lang_label = (
+            "Ukrainian"
+            if lang.startswith("uk")
+            else "Russian"
+            if lang.startswith("ru")
+            else lang
+        )
         system_prompt = SYSTEM_PROMPT_TEMPLATE.format(lang=lang_label)
         messages = [{"role": "system", "content": system_prompt}] + messages
 
@@ -62,16 +80,24 @@ class AiChatController(http.Controller):
         llm_result = service.chat_with_tools(messages=messages, tools=tools)
 
         tool_calls_to_store = llm_result.get("tool_calls") or None
-        env["solar.ai.message"].create({
-            "chat_id": chat.id,
-            "role": "assistant",
-            "content": llm_result.get("content"),
-            "tool_calls_json": tool_calls_to_store,
-            "status": "done",
-            "prompt_tokens": (llm_result.get("usage") or {}).get("prompt_tokens", 0),
-            "completion_tokens": (llm_result.get("usage") or {}).get("completion_tokens", 0),
-            "model_used": "default",
-        })
+        env["solar.ai.message"].create(
+            {
+                "chat_id": chat.id,
+                "role": "assistant",
+                "content": llm_result.get("content"),
+                "tool_calls_json": tool_calls_to_store,
+                "status": "done",
+                "prompt_tokens": (llm_result.get("usage") or {}).get(
+                    "prompt_tokens",
+                    0,
+                ),
+                "completion_tokens": (llm_result.get("usage") or {}).get(
+                    "completion_tokens",
+                    0,
+                ),
+                "model_used": "default",
+            },
+        )
 
         # BLOCKER #4: atomic token budget update — avoids concurrent overspend
         tokens_used = (llm_result.get("usage") or {}).get("total_tokens", 0)
@@ -109,31 +135,40 @@ class AiChatController(http.Controller):
         # Process tool_calls
         server_results = []
         client_calls = []
-        for tc in (llm_result.get("tool_calls") or []):
+        for tc in llm_result.get("tool_calls") or []:
             tool_name = tc.get("name", "")
             args = tc.get("parsed_args") or {}
             tool_call_id = tc.get("id", "")
 
             if tc.get("parse_error"):
-                server_results.append({
-                    "tool_call_id": tool_call_id,
-                    "content": f"Error: could not parse tool arguments — {tc['parse_error']}",
-                })
+                server_results.append(
+                    {
+                        "tool_call_id": tool_call_id,
+                        "content": f"Error: could not parse tool arguments — {tc['parse_error']}",
+                    },
+                )
                 continue
 
             if tool_name in agent._CLIENT_TOOLS:
-                client_calls.append({"tool_call_id": tool_call_id, "name": tool_name, "args": args})
+                client_calls.append(
+                    {"tool_call_id": tool_call_id, "name": tool_name, "args": args},
+                )
                 continue
 
             result = agent.safe_execute_tool(tool_name, args, tool_call_id=tool_call_id)
             content = str(result.get("result", result.get("error", "error")))
             server_results.append({"tool_call_id": tool_call_id, "content": content})
 
-            env["solar.ai.message"].create({
-                "chat_id": chat.id, "role": "tool",
-                "tool_call_id": tool_call_id, "tool_name": tool_name,
-                "content": content[:2000], "status": "done" if result.get("ok") else "error",
-            })
+            env["solar.ai.message"].create(
+                {
+                    "chat_id": chat.id,
+                    "role": "tool",
+                    "tool_call_id": tool_call_id,
+                    "tool_name": tool_name,
+                    "content": content[:2000],
+                    "status": "done" if result.get("ok") else "error",
+                },
+            )
 
         return {
             "status": "needs_continuation",
@@ -143,6 +178,100 @@ class AiChatController(http.Controller):
             "chat_id": chat.id,
             "budget_exhausted": budget_exhausted,
         }
+
+    @http.route(
+        "/solar_ai/agent/confirm",
+        type="jsonrpc",
+        auth="user",
+        methods=["POST"],
+        csrf=False,
+    )
+    def agent_confirm(self, message_id=None, **_kw):
+        env = request.env
+        _guards.check_authorized(env)
+
+        if not message_id:
+            return {"status": "error", "error": "missing_message_id"}
+
+        mid = int(message_id)
+
+        # BLOCKER #1: atomic CAS — only one confirm wins
+        env.cr.execute(
+            "UPDATE solar_ai_message SET status='confirmed' "
+            "WHERE id = %s AND status = 'pending_confirmation'",
+            [mid],
+        )
+        if env.cr.rowcount == 0:
+            env["solar.ai.message"].invalidate_model()
+            return {"status": "ok", "note": "already_processed"}
+
+        env["solar.ai.message"].invalidate_model()
+
+        msg = env["solar.ai.message"].browse(mid)
+        action = msg.proposed_action or {}
+        try:
+            result = self._execute_confirmed_action(env, action)
+        except (ValueError, AccessError) as exc:
+            _logger.warning("solar_ai confirm: action failed: %s", exc)
+            msg.write({"status": "error"})
+            return {"status": "error", "error": str(exc)}
+
+        msg.write({"executed_by_id": env.user.id, "executed_at": fields.Datetime.now()})
+        return {"status": "ok", **result}
+
+    @http.route(
+        "/solar_ai/agent/reject",
+        type="jsonrpc",
+        auth="user",
+        methods=["POST"],
+        csrf=False,
+    )
+    def agent_reject(self, message_id=None, **_kw):
+        env = request.env
+        _guards.check_authorized(env)
+
+        # BLOCKER #6: explicit message_id guard
+        if not message_id:
+            return {"status": "error", "error": "missing_message_id"}
+
+        mid = int(message_id)
+
+        env.cr.execute(
+            "UPDATE solar_ai_message SET status='rejected' "
+            "WHERE id = %s AND status = 'pending_confirmation'",
+            [mid],
+        )
+        env["solar.ai.message"].invalidate_model()
+
+        if env.cr.rowcount == 0:
+            return {"status": "ok", "note": "already_processed"}
+
+        return {"status": "ok"}
+
+    def _execute_confirmed_action(self, env, action):
+        """Execute a confirmed write action from proposed_action."""
+        model = action.get("model")
+        method = action.get("method")
+        values = action.get("values") or {}
+        record_id = action.get("id")
+
+        if method == "create":
+            record = env[model].create(values)
+            return {"created_id": record.id}
+        if method == "write":
+            env[model].browse(int(record_id)).write(values)
+            return {"updated_id": record_id}
+        if method == "activity_schedule":
+            record = env[model].browse(int(record_id))
+            date_str = action.get("date")
+            deadline = dt.date.fromisoformat(date_str) if date_str else None
+            record.activity_schedule(
+                "mail.mail_activity_data_todo",
+                summary=action.get("summary", ""),
+                date_deadline=deadline,
+            )
+            return {"scheduled": True}
+        raise ValueError(f"Unknown confirmed action method: {method!r}")
 
     def _build_messages(self, chat, user_text, tool_results=None):
         """Reconstruct message history from DB for the LLM context window.
@@ -175,19 +304,23 @@ class AiChatController(http.Controller):
                     ]
                 messages.append(entry)
             elif msg.role == "tool" and msg.tool_call_id:
-                messages.append({
-                    "role": "tool",
-                    "tool_call_id": msg.tool_call_id,
-                    "content": msg.content or "",
-                })
+                messages.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": msg.tool_call_id,
+                        "content": msg.content or "",
+                    },
+                )
 
         if tool_results:
             for tr in tool_results:
-                messages.append({
-                    "role": "tool",
-                    "tool_call_id": tr.get("tool_call_id", ""),
-                    "content": str(tr.get("content", "")),
-                })
+                messages.append(
+                    {
+                        "role": "tool",
+                        "tool_call_id": tr.get("tool_call_id", ""),
+                        "content": str(tr.get("content", "")),
+                    },
+                )
 
         if user_text:
             messages.append({"role": "user", "content": user_text})

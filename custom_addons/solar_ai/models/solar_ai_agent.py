@@ -1,4 +1,3 @@
-import json
 import logging
 from datetime import date
 
@@ -22,9 +21,22 @@ class SolarAiAgent(models.AbstractModel):
         },
         "project.task": {
             "capabilities": {"read", "navigate", "write"},
-            "write_fields": {"name", "description", "user_id", "project_id",
-                             "date_deadline", "stage_id"},
-            "read_fields": ["id", "name", "description", "user_id", "project_id", "stage_id"],
+            "write_fields": {
+                "name",
+                "description",
+                "user_id",
+                "project_id",
+                "date_deadline",
+                "stage_id",
+            },
+            "read_fields": [
+                "id",
+                "name",
+                "description",
+                "user_id",
+                "project_id",
+                "stage_id",
+            ],
         },
         "res.partner": {
             "capabilities": {"read", "navigate", "write"},
@@ -45,12 +57,16 @@ class SolarAiAgent(models.AbstractModel):
         return {m: d["capabilities"] for m, d in self._get_model_registry().items()}
 
     def _get_allowed_fields(self):
-        return {m: d["write_fields"]
-                for m, d in self._get_model_registry().items()
-                if d["write_fields"]}
+        return {
+            m: d["write_fields"]
+            for m, d in self._get_model_registry().items()
+            if d["write_fields"]
+        }
 
     def _get_safe_read_fields(self, model):
-        return self._get_model_registry().get(model, {}).get("read_fields", ["id", "name"])
+        return (
+            self._get_model_registry().get(model, {}).get("read_fields", ["id", "name"])
+        )
 
     # ------------------------------------------------------------------
     # Tool definitions
@@ -66,9 +82,19 @@ class SolarAiAgent(models.AbstractModel):
                     "parameters": {
                         "type": "object",
                         "properties": {
-                            "model": {"type": "string", "description": "Odoo model technical name"},
-                            "query": {"type": "string", "description": "Search text (display name match)"},
-                            "limit": {"type": "integer", "description": "Max results 1-20", "default": 5},
+                            "model": {
+                                "type": "string",
+                                "description": "Odoo model technical name",
+                            },
+                            "query": {
+                                "type": "string",
+                                "description": "Search text (display name match)",
+                            },
+                            "limit": {
+                                "type": "integer",
+                                "description": "Max results 1-20",
+                                "default": 5,
+                            },
                         },
                         "required": ["model", "query"],
                     },
@@ -125,7 +151,10 @@ class SolarAiAgent(models.AbstractModel):
                         "type": "object",
                         "properties": {
                             "model": {"type": "string"},
-                            "values": {"type": "object", "description": "Field values for the new record"},
+                            "values": {
+                                "type": "object",
+                                "description": "Field values for the new record",
+                            },
                         },
                         "required": ["model", "values"],
                     },
@@ -157,8 +186,14 @@ class SolarAiAgent(models.AbstractModel):
                         "properties": {
                             "model": {"type": "string"},
                             "id": {"type": "integer"},
-                            "summary": {"type": "string", "description": "Activity summary (max 200 chars)"},
-                            "date_deadline": {"type": "string", "description": "Deadline in YYYY-MM-DD format"},
+                            "summary": {
+                                "type": "string",
+                                "description": "Activity summary (max 200 chars)",
+                            },
+                            "date_deadline": {
+                                "type": "string",
+                                "description": "Deadline in YYYY-MM-DD format",
+                            },
                         },
                         "required": ["model", "id", "summary"],
                     },
@@ -191,7 +226,9 @@ class SolarAiAgent(models.AbstractModel):
             if model not in allowed:
                 raise ValueError(f"Model {model!r} is not in the allowed list")
             if cap not in allowed[model]:
-                raise ValueError(f"Tool {tool_name!r} (cap={cap!r}) not allowed for {model!r}")
+                raise ValueError(
+                    f"Tool {tool_name!r} (cap={cap!r}) not allowed for {model!r}",
+                )
 
     def _execute_tool(self, tool_name, args):
         """Execute a tool. Raises ValueError on whitelist violation."""
@@ -208,7 +245,8 @@ class SolarAiAgent(models.AbstractModel):
         # Write tools — require current_chat_id in context (BLOCKER #5)
         chat_id = self._context.get("current_chat_id")
         if not chat_id:
-            raise ValueError("chat_id is required for write tools — call with_context(current_chat_id=N)")
+            err = "chat_id is required for write tools — call with_context(current_chat_id=N)"
+            raise ValueError(err)
 
         if tool_name == "create_record":
             return self._tool_create_record(args, chat_id)
@@ -226,16 +264,32 @@ class SolarAiAgent(models.AbstractModel):
         """
         try:
             result = self._execute_tool(tool_name, args)
-            out = {"ok": True, "result": result, "tool_call_id_placeholder": tool_call_id}
+            out = {
+                "ok": True,
+                "result": result,
+                "tool_call_id_placeholder": tool_call_id,
+            }
             if isinstance(result, dict) and "status" in result:
                 out["status"] = result["status"]
             return out
         except ValueError as exc:
-            _logger.warning("solar_ai agent: tool %r validation error: %s", tool_name, exc)
-            return {"ok": False, "error": str(exc), "tool_call_id_placeholder": tool_call_id}
+            _logger.warning(
+                "solar_ai agent: tool %r validation error: %s",
+                tool_name,
+                exc,
+            )
+            return {
+                "ok": False,
+                "error": str(exc),
+                "tool_call_id_placeholder": tool_call_id,
+            }
         except AccessError as exc:
             _logger.warning("solar_ai agent: tool %r access denied: %s", tool_name, exc)
-            return {"ok": False, "error": "access_denied", "tool_call_id_placeholder": tool_call_id}
+            return {
+                "ok": False,
+                "error": "access_denied",
+                "tool_call_id_placeholder": tool_call_id,
+            }
 
     # ------------------------------------------------------------------
     # Tool implementations (READ, Phase A)
@@ -245,7 +299,8 @@ class SolarAiAgent(models.AbstractModel):
         model = args["model"]
         query = (args.get("query") or "").strip()
         if not query:
-            raise ValueError("query must be a non-empty string")
+            err = "query must be a non-empty string"
+            raise ValueError(err)
         try:
             limit = max(1, min(20, int(args.get("limit") or 5)))
         except (TypeError, ValueError):
@@ -281,15 +336,25 @@ class SolarAiAgent(models.AbstractModel):
         summary = f"Створити {model_label}:\n" + "\n".join(field_lines)
 
         chat = self.env["solar.ai.chat"].browse(int(chat_id))
-        msg = self.env["solar.ai.message"].create({
-            "chat_id": chat.id,
-            "role": "assistant",
+        msg = self.env["solar.ai.message"].create(
+            {
+                "chat_id": chat.id,
+                "role": "assistant",
+                "status": "pending_confirmation",
+                "proposed_action": {
+                    "model": model,
+                    "method": "create",
+                    "values": values,
+                },
+                "action_summary": summary,
+                "content": summary,
+            },
+        )
+        return {
             "status": "pending_confirmation",
-            "proposed_action": {"model": model, "method": "create", "values": values},
-            "action_summary": summary,
-            "content": summary,
-        })
-        return {"status": "pending_confirmation", "message_id": msg.id, "summary": summary}
+            "message_id": msg.id,
+            "summary": summary,
+        }
 
     def _tool_update_record(self, args, chat_id):
         model = args["model"]
@@ -308,15 +373,26 @@ class SolarAiAgent(models.AbstractModel):
             summary += f"  {label}: {v!r}\n"
 
         chat = self.env["solar.ai.chat"].browse(int(chat_id))
-        msg = self.env["solar.ai.message"].create({
-            "chat_id": chat.id,
-            "role": "assistant",
+        msg = self.env["solar.ai.message"].create(
+            {
+                "chat_id": chat.id,
+                "role": "assistant",
+                "status": "pending_confirmation",
+                "proposed_action": {
+                    "model": model,
+                    "method": "write",
+                    "id": record_id,
+                    "values": values,
+                },
+                "action_summary": summary,
+                "content": summary,
+            },
+        )
+        return {
             "status": "pending_confirmation",
-            "proposed_action": {"model": model, "method": "write", "id": record_id, "values": values},
-            "action_summary": summary,
-            "content": summary,
-        })
-        return {"status": "pending_confirmation", "message_id": msg.id, "summary": summary}
+            "message_id": msg.id,
+            "summary": summary,
+        }
 
     def _tool_schedule_activity(self, args, chat_id):
         """MAJOR #15: validate summary and date_deadline before any ORM call."""
@@ -325,7 +401,8 @@ class SolarAiAgent(models.AbstractModel):
 
         summary = str(args.get("summary") or "").strip()
         if len(summary) > 200:
-            raise ValueError("summary too long (max 200 chars)")
+            err = "summary too long (max 200 chars)"
+            raise ValueError(err)
 
         date_str = args.get("date_deadline")
         if date_str:
@@ -339,22 +416,32 @@ class SolarAiAgent(models.AbstractModel):
         if not record.exists():
             return {"error": "record_not_found"}
 
-        action_summary = (f"Запланувати активність на {record.display_name}:\n"
-                          f"  {summary}\n  Дедлайн: {date_str or 'не вказано'}")
+        action_summary = (
+            f"Запланувати активність на {record.display_name}:\n"
+            f"  {summary}\n  Дедлайн: {date_str or 'не вказано'}"
+        )
         chat = self.env["solar.ai.chat"].browse(int(chat_id))
-        msg = self.env["solar.ai.message"].create({
-            "chat_id": chat.id,
-            "role": "assistant",
-            "status": "pending_confirmation",
-            "proposed_action": {
-                "model": model, "method": "activity_schedule",
-                "id": record_id, "summary": summary,
-                "date": date_str,
+        msg = self.env["solar.ai.message"].create(
+            {
+                "chat_id": chat.id,
+                "role": "assistant",
+                "status": "pending_confirmation",
+                "proposed_action": {
+                    "model": model,
+                    "method": "activity_schedule",
+                    "id": record_id,
+                    "summary": summary,
+                    "date": date_str,
+                },
+                "action_summary": action_summary,
+                "content": action_summary,
             },
-            "action_summary": action_summary,
-            "content": action_summary,
-        })
-        return {"status": "pending_confirmation", "message_id": msg.id, "summary": action_summary}
+        )
+        return {
+            "status": "pending_confirmation",
+            "message_id": msg.id,
+            "summary": action_summary,
+        }
 
     # ------------------------------------------------------------------
     # Validation helper (shared by read and write tools)

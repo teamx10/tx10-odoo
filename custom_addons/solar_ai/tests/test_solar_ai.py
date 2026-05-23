@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch
 
 from odoo.tests import HttpCase, TransactionCase, tagged
 
+from odoo.addons.solar_ai.controllers import _guards
 from odoo.addons.solar_ai.controllers._guards import (
     RATE_LIMIT_MAX_CALLS,
     _check_rate_limit,
@@ -70,24 +71,39 @@ class TestSolarAiService(TransactionCase):
         """chat_with_tools extracts tool_calls from LLM response."""
         mock_post.return_value.status_code = 200
         mock_post.return_value.json.return_value = {
-            "choices": [{
-                "message": {
-                    "role": "assistant",
-                    "content": None,
-                    "tool_calls": [{
-                        "id": "call_abc123",
-                        "type": "function",
-                        "function": {"name": "find_records", "arguments": '{"model": "res.partner", "query": "Ivanov"}'},
-                    }],
+            "choices": [
+                {
+                    "message": {
+                        "role": "assistant",
+                        "content": None,
+                        "tool_calls": [
+                            {
+                                "id": "call_abc123",
+                                "type": "function",
+                                "function": {
+                                    "name": "find_records",
+                                    "arguments": '{"model": "res.partner", "query": "Ivanov"}',
+                                },
+                            },
+                        ],
+                    },
+                    "finish_reason": "tool_calls",
                 },
-                "finish_reason": "tool_calls",
-            }],
+            ],
             "usage": {"prompt_tokens": 20, "completion_tokens": 10, "total_tokens": 30},
         }
-        self.env["ir.config_parameter"].set_param("solar_ai.openrouter_api_key", "test-key")
+        self.env["ir.config_parameter"].set_param(
+            "solar_ai.openrouter_api_key",
+            "test-key",
+        )
         result = self.env["solar.ai.service"].chat_with_tools(
             messages=[{"role": "user", "content": "Find Ivanov"}],
-            tools=[{"type": "function", "function": {"name": "find_records", "parameters": {}}}],
+            tools=[
+                {
+                    "type": "function",
+                    "function": {"name": "find_records", "parameters": {}},
+                },
+            ],
         )
         self.assertEqual(result["finish_reason"], "tool_calls")
         self.assertEqual(len(result["tool_calls"]), 1)
@@ -98,19 +114,34 @@ class TestSolarAiService(TransactionCase):
         """Malformed tool arguments don't raise — return error result."""
         mock_post.return_value.status_code = 200
         mock_post.return_value.json.return_value = {
-            "choices": [{
-                "message": {
-                    "role": "assistant",
-                    "content": None,
-                    "tool_calls": [{"id": "x", "type": "function", "function": {"name": "bad", "arguments": "INVALID_JSON{"}}],
+            "choices": [
+                {
+                    "message": {
+                        "role": "assistant",
+                        "content": None,
+                        "tool_calls": [
+                            {
+                                "id": "x",
+                                "type": "function",
+                                "function": {
+                                    "name": "bad",
+                                    "arguments": "INVALID_JSON{",
+                                },
+                            },
+                        ],
+                    },
+                    "finish_reason": "tool_calls",
                 },
-                "finish_reason": "tool_calls",
-            }],
+            ],
             "usage": {},
         }
-        self.env["ir.config_parameter"].set_param("solar_ai.openrouter_api_key", "test-key")
+        self.env["ir.config_parameter"].set_param(
+            "solar_ai.openrouter_api_key",
+            "test-key",
+        )
         result = self.env["solar.ai.service"].chat_with_tools(
-            messages=[{"role": "user", "content": "hi"}], tools=[],
+            messages=[{"role": "user", "content": "hi"}],
+            tools=[],
         )
         self.assertEqual(result["finish_reason"], "tool_calls")
         self.assertIsNone(result["tool_calls"][0].get("parsed_args"))
@@ -121,12 +152,21 @@ class TestSolarAiService(TransactionCase):
         """finish_reason=length returns error key so caller can surface notice."""
         mock_post.return_value.status_code = 200
         mock_post.return_value.json.return_value = {
-            "choices": [{"message": {"role": "assistant", "content": "cut off..."}, "finish_reason": "length"}],
+            "choices": [
+                {
+                    "message": {"role": "assistant", "content": "cut off..."},
+                    "finish_reason": "length",
+                },
+            ],
             "usage": {},
         }
-        self.env["ir.config_parameter"].set_param("solar_ai.openrouter_api_key", "test-key")
+        self.env["ir.config_parameter"].set_param(
+            "solar_ai.openrouter_api_key",
+            "test-key",
+        )
         result = self.env["solar.ai.service"].chat_with_tools(
-            messages=[{"role": "user", "content": "hi"}], tools=[],
+            messages=[{"role": "user", "content": "hi"}],
+            tools=[],
         )
         self.assertEqual(result["finish_reason"], "length")
         self.assertIn("error", result)
@@ -425,8 +465,6 @@ class TestOlgProxyHardening(HttpCase):
 
     def test_guards_module_exports_symbols(self):
         """Regression: _guards.py must export same symbols for backward compat."""
-        from odoo.addons.solar_ai.controllers._guards import (  # noqa: F401
-            RATE_LIMIT_MAX_CALLS,
-            _check_rate_limit,
-            _rate_limit_state,
-        )
+        self.assertTrue(hasattr(_guards, "RATE_LIMIT_MAX_CALLS"))
+        self.assertTrue(hasattr(_guards, "_check_rate_limit"))
+        self.assertTrue(hasattr(_guards, "_rate_limit_state"))
