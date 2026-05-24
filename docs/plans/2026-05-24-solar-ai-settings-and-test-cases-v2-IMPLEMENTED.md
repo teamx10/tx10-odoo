@@ -111,4 +111,4 @@ c0e8c9a [ADD] docs: solar AI chat manual test cases L0-L4 + code map for E2E (v2
 4b18872 [IMP] solar_ai: blank default_model falls back to hardcoded default + negative-path tests
 ```
 
-**PR:** _(to be filled after creation)_
+**PR:** https://github.com/teamx10/tx10-odoo/pull/2 (base: `develop`)
