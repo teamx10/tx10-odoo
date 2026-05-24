@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<templates xml:space="preserve">
+    <t t-name="solar_ai.AiAssistantSystray">
+        <div class="o-solar-ai-systray">
+            <button
+                class="o-solar-ai-systray-btn btn btn-sm"
+                t-on-click="toggle"
+                t-att-aria-expanded="panelState.open"
+                aria-controls="o-solar-ai-panel"
+                aria-label="Open Solar AI assistant"
+                title="Solar AI"
+            >
+                🤖
+            </button>
+            <AiAssistantPanel
+                t-if="panelState.open"
+                chatId="panelState.chatId"
+                onClose="() => this.toggle()"
+            />
+        </div>
+    </t>
+</templates>

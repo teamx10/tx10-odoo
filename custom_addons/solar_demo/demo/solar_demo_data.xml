@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+  <!-- ─── Clients ─────────────────────────────────────── -->
+  <record id="solar_demo_partner_sonnenhaus" model="res.partner">
+    <field name="name">Sonnenhaus GmbH</field>
+    <field name="is_company" eval="True"/>
+    <field name="city">Berlin</field>
+    <field name="country_id" ref="base.de"/>
+  </record>
+
+  <record id="solar_demo_partner_greenvalley" model="res.partner">
+    <field name="name">Green Valley Farm</field>
+    <field name="is_company" eval="True"/>
+    <field name="city">Kyiv</field>
+    <field name="country_id" ref="base.ua"/>
+  </record>
+
+  <record id="solar_demo_partner_riverside" model="res.partner">
+    <field name="name">Riverside Logistics</field>
+    <field name="is_company" eval="True"/>
+    <field name="city">Odesa</field>
+    <field name="country_id" ref="base.ua"/>
+  </record>
+
+  <!-- ─── Projects ─────────────────────────────────────── -->
+  <record id="solar_demo_project_residential" model="project.project">
+    <field name="name">Sonnenhaus — 8 kWp Residential</field>
+    <field name="partner_id" ref="solar_demo_partner_sonnenhaus"/>
+    <field name="solar_stage">survey</field>
+    <field name="solar_roof_type">metal</field>
+    <field name="solar_grid_type">on_grid</field>
+    <field name="solar_kw_capacity">8.0</field>
+    <field name="solar_budget_usd">12000</field>
+    <field name="solar_address">Musterstraße 12, 10115 Berlin</field>
+    <field name="solar_latitude">52.520008</field>
+    <field name="solar_longitude">13.404954</field>
+  </record>
+
+  <record id="solar_demo_project_commercial" model="project.project">
+    <field name="name">Green Valley — 50 kWp Agri-PV</field>
+    <field name="partner_id" ref="solar_demo_partner_greenvalley"/>
+    <field name="solar_stage">installation</field>
+    <field name="solar_roof_type">flat</field>
+    <field name="solar_grid_type">hybrid</field>
+    <field name="solar_kw_capacity">50.0</field>
+    <field name="solar_battery_kwh">30.0</field>
+    <field name="solar_budget_usd">65000</field>
+    <field name="solar_address">Boryspil district, Kyiv region</field>
+  </record>
+
+  <record id="solar_demo_project_groundmount" model="project.project">
+    <field name="name">Riverside — 120 kWp Ground Mount</field>
+    <field name="partner_id" ref="solar_demo_partner_riverside"/>
+    <field name="solar_stage">handover</field>
+    <field name="solar_roof_type">ground</field>
+    <field name="solar_grid_type">on_grid</field>
+    <field name="solar_kw_capacity">120.0</field>
+    <field name="solar_budget_usd">140000</field>
+    <field name="solar_address">Suvorovsʹkyy district, Odesa</field>
+  </record>
+
+  <!-- ─── Tasks (required for checklist items) ─────────── -->
+  <record id="solar_demo_task_residential_survey" model="project.task">
+    <field name="name">Site Survey</field>
+    <field name="project_id" ref="solar_demo_project_residential"/>
+  </record>
+
+  <record id="solar_demo_task_commercial_install" model="project.task">
+    <field name="name">Panel Installation</field>
+    <field name="project_id" ref="solar_demo_project_commercial"/>
+  </record>
+
+  <record id="solar_demo_task_groundmount_handover" model="project.task">
+    <field name="name">Client Handover</field>
+    <field name="project_id" ref="solar_demo_project_groundmount"/>
+  </record>
+
+  <!-- ─── Solar Documents ───────────────────────────────── -->
+  <!-- Project A: Residential survey — 2 docs (approved + review) -->
+  <record id="solar_demo_doc_residential_bill" model="solar.document">
+    <field name="name">Electricity Bill Jan 2026</field>
+    <field name="project_id" ref="solar_demo_project_residential"/>
+    <field name="document_type_id" ref="solar_project.solar_dtype_bill_electricity"/>
+    <field name="state">approved</field>
+    <field name="valid_from" eval="(DateTime.today() - relativedelta(months=3)).strftime('%Y-%m-%d')"/>
+  </record>
+
+  <record id="solar_demo_doc_residential_roof" model="solar.document">
+    <field name="name">Roof Measurement Report</field>
+    <field name="project_id" ref="solar_demo_project_residential"/>
+    <field name="document_type_id" ref="solar_project.solar_dtype_roof_measurement"/>
+    <field name="state">review</field>
+  </record>
+
+  <!-- Project B: Commercial install — 2 docs (approved + draft) -->
+  <record id="solar_demo_doc_commercial_permit" model="solar.document">
+    <field name="name">Grid Connection Permit</field>
+    <field name="project_id" ref="solar_demo_project_commercial"/>
+    <field name="document_type_id" ref="solar_project.solar_dtype_permit"/>
+    <field name="state">approved</field>
+  </record>
+
+  <record id="solar_demo_doc_commercial_sld" model="solar.document">
+    <field name="name">Single-Line Electrical Diagram v2</field>
+    <field name="project_id" ref="solar_demo_project_commercial"/>
+    <field name="document_type_id" ref="solar_project.solar_dtype_single_line_diagram"/>
+    <field name="state">draft</field>
+  </record>
+
+  <!-- Project C: Ground mount handover — 2 docs (approved) -->
+  <record id="solar_demo_doc_groundmount_handover" model="solar.document">
+    <field name="name">Handover Act signed</field>
+    <field name="project_id" ref="solar_demo_project_groundmount"/>
+    <field name="document_type_id" ref="solar_project.solar_dtype_handover_act"/>
+    <field name="state">approved</field>
+    <field name="valid_from" eval="(DateTime.today() - relativedelta(days=10)).strftime('%Y-%m-%d')"/>
+  </record>
+
+  <record id="solar_demo_doc_groundmount_commissioning" model="solar.document">
+    <field name="name">Commissioning Test Report</field>
+    <field name="project_id" ref="solar_demo_project_groundmount"/>
+    <field name="document_type_id" ref="solar_project.solar_dtype_commissioning_report"/>
+    <field name="state">approved</field>
+  </record>
+
+  <!-- ─── Checklist Items ───────────────────────────────── -->
+  <!-- Residential: Site Survey task -->
+  <record id="solar_demo_check_survey_1" model="solar.checklist.item">
+    <field name="name">Roof dimensions measured</field>
+    <field name="task_id" ref="solar_demo_task_residential_survey"/>
+    <field name="sequence">10</field>
+    <field name="is_done" eval="True"/>
+  </record>
+
+  <record id="solar_demo_check_survey_2" model="solar.checklist.item">
+    <field name="name">Shading analysis completed</field>
+    <field name="task_id" ref="solar_demo_task_residential_survey"/>
+    <field name="sequence">20</field>
+    <field name="is_done" eval="False"/>
+  </record>
+
+  <record id="solar_demo_check_survey_3" model="solar.checklist.item">
+    <field name="name">Electricity meter photo taken</field>
+    <field name="task_id" ref="solar_demo_task_residential_survey"/>
+    <field name="sequence">30</field>
+    <field name="is_done" eval="True"/>
+  </record>
+
+  <!-- Commercial: Panel Installation task -->
+  <record id="solar_demo_check_install_1" model="solar.checklist.item">
+    <field name="name">Mounting structure installed</field>
+    <field name="task_id" ref="solar_demo_task_commercial_install"/>
+    <field name="sequence">10</field>
+    <field name="is_done" eval="True"/>
+  </record>
+
+  <record id="solar_demo_check_install_2" model="solar.checklist.item">
+    <field name="name">Panels wired and tested</field>
+    <field name="task_id" ref="solar_demo_task_commercial_install"/>
+    <field name="sequence">20</field>
+    <field name="is_done" eval="True"/>
+  </record>
+
+  <record id="solar_demo_check_install_3" model="solar.checklist.item">
+    <field name="name">Inverter commissioning complete</field>
+    <field name="task_id" ref="solar_demo_task_commercial_install"/>
+    <field name="sequence">30</field>
+    <field name="is_done" eval="False"/>
+  </record>
+
+</odoo>

@@ -1,0 +1,51 @@
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_DB: postgres
+      POSTGRES_USER: odoo
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - odoo-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "odoo"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  odoo:
+    build: ./docker
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8069:8069"
+    environment:
+      # Official odoo:19 entrypoint uses HOST/USER/PASSWORD for DB connection
+      HOST: db
+      USER: odoo
+      PASSWORD: ${DB_PASSWORD}
+      # OpenRouter key — empty = AI features inactive, no crash
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+    volumes:
+      - ./custom_addons:/mnt/extra-addons
+      - ./docker/odoo.conf:/etc/odoo/odoo.conf
+      - odoo-web:/var/lib/odoo
+    # --with-demo: Odoo 19 defaults new_db_demo=False, so this flag is REQUIRED
+    #   for the iSolar branding + sample data to self-seed on first boot.
+    # No --admin-passwd: the master password gates the DB manager, which is
+    #   already disabled via list_db=False in odoo.conf. Keeping it off the
+    #   command line avoids leaking it through `docker inspect` / /proc/<pid>/cmdline.
+    command: odoo -d isolar -i solar_demo --with-demo
+    healthcheck:
+      # python3 is guaranteed in the odoo image (curl is not); urllib avoids
+      # an always-failing healthcheck that would block depends_on indefinitely.
+      test: ["CMD", "python3", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8069/web/health', timeout=5).status == 200 else 1)"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 90s
+
+volumes:
+  odoo-db:
+  odoo-web:
