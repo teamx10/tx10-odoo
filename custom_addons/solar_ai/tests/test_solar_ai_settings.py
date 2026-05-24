@@ -116,3 +116,24 @@ class TestSolarAiConfigSettings(TransactionCase):
             service._get_config("default_model", "anthropic/claude-sonnet-4-5"),
             "anthropic/claude-sonnet-4-5",
         )
+
+
+@tagged("post_install", "-at_install")
+class TestSolarAiSettingsView(TransactionCase):
+    """Guard: Solar AI fields must appear in the rendered settings form (xpath silent-fail guard, finding #5)."""
+
+    def test_settings_view_renders_solar_ai_fields(self):
+        """get_views merges all inherited views — if xpath mismatches, our block is absent."""
+        views = self.env["res.config.settings"].get_views([[False, "form"]])
+        arch = views["views"]["form"]["arch"]
+        self.assertIn(
+            "solar_ai_openrouter_api_key",
+            arch,
+            "solar_ai_openrouter_api_key missing from rendered settings form — "
+            "check //app[@name='project'] xpath in res_config_settings_views.xml",
+        )
+        self.assertIn(
+            "solar_ai_default_model",
+            arch,
+            "solar_ai_default_model missing from rendered settings form",
+        )
