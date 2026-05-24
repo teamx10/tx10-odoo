@@ -24,7 +24,7 @@ def check_rate_limit(user_id) -> bool:
     """Sliding-window rate limit per user.
 
     NOTE: per-worker in-memory state — not shared across gunicorn workers.
-    With N workers the effective limit is 20×N calls / 60 s, making this
+    With N workers the effective limit is 20*N calls / 60 s, making this
     guard weaker in multi-worker production deployments.
     A future fix would use Redis or PostgreSQL for shared state.
     Tracked in: TODO — replace with shared-state rate limiter before scaling beyond 2 workers.
