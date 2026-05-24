@@ -39,6 +39,17 @@ class SolarAiService(models.AbstractModel):
             self.env["ir.config_parameter"].sudo().get_param(f"solar_ai.{key}", default)
         )
 
+    def _resolve_model(self, model):
+        """Resolve the model id, treating a blank default_model the same as absent.
+
+        ir.config_parameter keeps an empty string rather than deleting the param, so a
+        get_param default only fires when the key is missing. Chaining `or` makes a blank
+        value fall back to the hardcoded default instead of sending model='' to OpenRouter.
+        """
+        return (
+            model or self._get_config("default_model") or "anthropic/claude-sonnet-4-5"
+        )
+
     def _build_headers(self):
         api_key = self._get_config("openrouter_api_key")
         if not api_key:
@@ -66,10 +77,7 @@ class SolarAiService(models.AbstractModel):
             "openrouter_base_url",
             "https://openrouter.ai/api/v1",
         )
-        model = model or self._get_config(
-            "default_model",
-            "anthropic/claude-sonnet-4-5",
-        )
+        model = self._resolve_model(model)
 
         payload = {"model": model, "messages": messages}
         if tools:
@@ -146,10 +154,7 @@ class SolarAiService(models.AbstractModel):
                 "error": "no_api_key",
             }
 
-        model = model or self._get_config(
-            "default_model",
-            "anthropic/claude-sonnet-4-5",
-        )
+        model = self._resolve_model(model)
         payload = {"model": model, "messages": messages}
         if tools:
             payload["tools"] = tools

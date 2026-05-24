@@ -86,8 +86,13 @@ class TestSolarAiConfigSettings(TransactionCase):
 
     # --- Empty-credential degradation paths end-to-end (review MAJOR) ---
 
-    def test_chat_without_api_key_degrades_gracefully(self):
-        """chat() with no key must not crash and returns empty content (finding #6 end-to-end)."""
+    def test_chat_without_api_key_short_circuits_before_http(self):
+        """chat() with no key returns empty content via the no-key guard, before any HTTP call.
+
+        This intentionally exercises only the guard (service lines 59-63): no key means
+        no network call regardless of model. It does NOT cover the live HTTP path — that
+        belongs in an HttpCase with a mocked OpenRouter endpoint.
+        """
         self.env["ir.config_parameter"].sudo().set_param(
             "solar_ai.openrouter_api_key",
             "",
@@ -107,6 +112,20 @@ class TestSolarAiConfigSettings(TransactionCase):
         self.assertEqual(result.get("error"), "no_api_key")
         self.assertEqual(result.get("tool_calls"), [])
 
+    def test_classify_document_without_api_key_returns_unknown(self):
+        """classify_document_text() with no key must degrade to unknown, not raise.
+
+        chat() returns {"content": ""} with no key; json.loads("") raises JSONDecodeError
+        which classify_document_text catches and maps to the unknown fallback.
+        """
+        self.env["ir.config_parameter"].sudo().set_param(
+            "solar_ai.openrouter_api_key",
+            "",
+        )
+        service = self.env["solar.ai.service"]
+        result = service.classify_document_text("some document text")
+        self.assertEqual(result, {"document_type_code": "unknown", "confidence": 0.0})
+
     def test_default_model_fallback_when_param_absent(self):
         """When solar_ai.default_model is absent, service falls back to the hardcoded default."""
         param = self.env["ir.config_parameter"].sudo()
@@ -114,6 +133,22 @@ class TestSolarAiConfigSettings(TransactionCase):
         service = self.env["solar.ai.service"]
         self.assertEqual(
             service._get_config("default_model", "anthropic/claude-sonnet-4-5"),
+            "anthropic/claude-sonnet-4-5",
+        )
+
+    def test_empty_default_model_falls_back_to_hardcoded_default(self):
+        """A blank default_model saved via Settings must not send model='' to OpenRouter.
+
+        ir.config_parameter keeps an empty string (it is not deleted), so the service must
+        treat a blank value the same as absent and fall back to the hardcoded default model.
+        """
+        settings = self.env["res.config.settings"].create(
+            {"solar_ai_default_model": ""},
+        )
+        settings.execute()
+        service = self.env["solar.ai.service"]
+        self.assertEqual(
+            service._resolve_model(None),
             "anthropic/claude-sonnet-4-5",
         )
 
