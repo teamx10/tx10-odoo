@@ -1,1 +1,83 @@
-// Model select widget — placeholder
+.o_tx10_ai_model_select {
+    position: relative;
+    width: 100%;
+    max-width: 600px;
+
+    .o_input {
+        width: 100%;
+    }
+
+    .o_tx10_ai_model_dropdown {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        z-index: 1000;
+        max-height: 320px;
+        overflow-y: auto;
+        background: var(--o-white, #fff);
+        border: 1px solid var(--o-gray-300, #dee2e6);
+        border-radius: 4px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+        margin-top: 2px;
+    }
+
+    .o_tx10_ai_model_group_header {
+        padding: 6px 12px 2px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--o-gray-500, #6c757d);
+        background: var(--o-gray-100, #f8f9fa);
+        border-bottom: 1px solid var(--o-gray-200, #e9ecef);
+        position: sticky;
+        top: 0;
+    }
+
+    .o_tx10_ai_model_item {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        grid-template-rows: auto auto;
+        column-gap: 12px;
+        padding: 6px 12px;
+        cursor: pointer;
+        border-bottom: 1px solid var(--o-gray-100, #f8f9fa);
+
+        &:last-child { border-bottom: none; }
+
+        &:hover,
+        &.o_selected { background: var(--o-action-light, #e8f4ff); }
+
+        .o_tx10_ai_model_name {
+            grid-row: 1;
+            grid-column: 1;
+            font-weight: 500;
+            font-size: 0.875rem;
+        }
+
+        .o_tx10_ai_model_id {
+            grid-row: 2;
+            grid-column: 1;
+            font-size: 0.75rem;
+            color: var(--o-gray-500, #6c757d);
+            font-family: monospace;
+        }
+
+        .o_tx10_ai_model_price {
+            grid-row: 1 / 3;
+            grid-column: 2;
+            align-self: center;
+            font-size: 0.75rem;
+            color: var(--o-gray-600, #495057);
+            white-space: nowrap;
+        }
+    }
+
+    .o_tx10_ai_model_hint {
+        display: block;
+        margin-top: 4px;
+        font-size: 0.75rem;
+        color: var(--o-gray-500, #6c757d);
+    }
+}
