@@ -55,3 +55,22 @@ class TestTx10AiService(TransactionCase):
         self.assertEqual(len(result["tool_calls"]), 1)
         self.assertEqual(result["tool_calls"][0]["name"], "find_records")
         self.assertEqual(result["tool_calls"][0]["parsed_args"], {"model": "project.task", "query": "test"})
+
+
+@tagged("tx10_ai", "post_install", "-at_install")
+class TestTx10AiMessage(TransactionCase):
+
+    def test_create_message_defaults(self):
+        # tx10.ai.chat must exist first as FK parent
+        chat = self.env["tx10.ai.chat"].create({
+            "name": "Test Chat",
+            "user_id": self.env.uid,
+        })
+        msg = self.env["tx10.ai.message"].create({
+            "chat_id": chat.id,
+            "role": "user",
+            "content": "Hello TX10 AI",
+        })
+        self.assertEqual(msg.status, "done")
+        self.assertEqual(msg.role, "user")
+        self.assertIn(msg, chat.message_ids)
