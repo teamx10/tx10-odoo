@@ -4,7 +4,7 @@
     "summary": "Branding and sample data for iSolar demo environment",
     "author": "iSolar",
     "category": "Project",
-    "depends": ["solar_project", "solar_ai"],
+    "depends": ["solar_project"],
     "data": [],
     "demo": ["demo/branding.xml", "demo/solar_demo_data.xml"],
     "installable": True,

@@ -1,0 +1,7 @@
+# tx2 workspace config
+version: "2.0"
+project: "tx10-odoo"
+persona_map: "projects/tx2/config/persona-map.yml"
+consensus_gate_script: "$HOME/.claude/scripts/tx2/consensus-gate.sh"
+max_repair_iterations: 3
+max_review_iterations: 2

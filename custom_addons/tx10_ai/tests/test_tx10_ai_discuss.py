@@ -1,5 +1,7 @@
 from unittest.mock import MagicMock, patch
 
+import httpx
+
 from odoo.tests import TransactionCase, tagged
 
 
@@ -225,3 +227,76 @@ class TestTx10AiBootstrap(TransactionCase):
         user.with_user(user)._on_webclient_bootstrap()
         chats = self.env["tx10.ai.chat"].search([("user_id", "=", user.id)])
         self.assertEqual(len(chats), 1, "Second bootstrap must not create duplicate chat")
+
+
+@tagged("tx10_ai", "post_install", "-at_install")
+class TestTx10AiErrorSurfacing(TransactionCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.bot_partner = cls.env.ref("tx10_ai.partner_ai_bot")
+        cls.regular_user = _make_manager_user(cls.env, "err_surf_regular")
+        cls.admin_user = cls.env.ref("base.user_admin")
+
+    def _setup_pending_chat(self, user):
+        channel = self.env["discuss.channel"].with_user(user)._get_or_create_chat(
+            [self.bot_partner.id, user.partner_id.id],
+        )
+        chat = self.env["tx10.ai.chat"].create({
+            "name": "error test",
+            "user_id": user.id,
+            "channel_id": channel.id,
+            "pending_agent_run": True,
+        })
+        self.env["tx10.ai.message"].create({"chat_id": chat.id, "role": "user", "content": "Hi"})
+        return chat, channel
+
+    def _new_bot_msgs(self, channel, before):
+        channel.invalidate_recordset()
+        after = channel.message_ids.filtered(lambda m: m.author_id == self.bot_partner)
+        return after - before
+
+    def test_no_api_key_bot_replies(self):
+        """Without API key, bot must post a message — no silent failure."""
+        self.env["ir.config_parameter"].sudo().set_param("tx10_ai.openrouter_api_key", "")
+        _, channel = self._setup_pending_chat(self.regular_user)
+        before = channel.message_ids.filtered(lambda m: m.author_id == self.bot_partner)
+        self.env["tx10.ai.chat"]._cron_run_pending_chats()
+        new_msgs = self._new_bot_msgs(channel, before)
+        self.assertTrue(new_msgs, "Bot must post when API key is missing — no silent failure")
+        self.assertIn("налаштовано", new_msgs[0].body)
+
+    @patch("httpx.post")
+    def test_http_error_posts_service_unavailable(self, mock_post):
+        """HTTP error from OpenRouter → bot posts service-unavailable message."""
+        self.env["ir.config_parameter"].sudo().set_param("tx10_ai.openrouter_api_key", "test-key")
+        mock_resp = MagicMock()
+        mock_resp.status_code = 500
+        mock_resp.text = "Server Error"
+        mock_post.side_effect = httpx.HTTPStatusError("500", request=MagicMock(), response=mock_resp)
+        _, channel = self._setup_pending_chat(self.regular_user)
+        before = channel.message_ids.filtered(lambda m: m.author_id == self.bot_partner)
+        self.env["tx10.ai.chat"]._cron_run_pending_chats()
+        new_msgs = self._new_bot_msgs(channel, before)
+        self.assertTrue(new_msgs, "Bot must post on HTTP error — no silent failure")
+        self.assertIn("недоступний", new_msgs[0].body)
+
+    def test_admin_sees_error_code(self):
+        """Admin (base.group_system) must see the technical error code in the message."""
+        self.env["ir.config_parameter"].sudo().set_param("tx10_ai.openrouter_api_key", "")
+        _, channel = self._setup_pending_chat(self.admin_user)
+        before = channel.message_ids.filtered(lambda m: m.author_id == self.bot_partner)
+        self.env["tx10.ai.chat"]._cron_run_pending_chats()
+        new_msgs = self._new_bot_msgs(channel, before)
+        self.assertTrue(new_msgs)
+        self.assertIn("no_api_key", new_msgs[0].body)
+
+    def test_non_admin_no_error_code(self):
+        """Regular (non-admin) user must NOT see the technical error code."""
+        self.env["ir.config_parameter"].sudo().set_param("tx10_ai.openrouter_api_key", "")
+        _, channel = self._setup_pending_chat(self.regular_user)
+        before = channel.message_ids.filtered(lambda m: m.author_id == self.bot_partner)
+        self.env["tx10.ai.chat"]._cron_run_pending_chats()
+        new_msgs = self._new_bot_msgs(channel, before)
+        self.assertTrue(new_msgs)
+        self.assertNotIn("no_api_key", new_msgs[0].body)

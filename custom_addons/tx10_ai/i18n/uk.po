@@ -1,0 +1,32 @@
+# Ukrainian translation of the tx10_ai module
+# Copyright (C) 2026 TeamX10
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 19.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-05-26 00:00+0000\n"
+"PO-Revision-Date: 2026-05-26 00:00+0000\n"
+"Last-Translator: \n"
+"Language-Team: Ukrainian\n"
+"Language: uk\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "🔌 AI-асистента ще не налаштовано. Зверніться до адміністратора."
+msgstr "🔌 AI-асистента ще не налаштовано. Зверніться до адміністратора."
+
+msgid "⚠️ Сервіс AI тимчасово недоступний. Спробуйте пізніше."
+msgstr "⚠️ Сервіс AI тимчасово недоступний. Спробуйте пізніше."
+
+msgid "🤔 Не вдалося згенерувати відповідь. Перефразуйте запит."
+msgstr "🤔 Не вдалося згенерувати відповідь. Перефразуйте запит."
+
+msgid "🤔 Відповідь заблокована фільтром. Перефразуйте запит."
+msgstr "🤔 Відповідь заблокована фільтром. Перефразуйте запит."
+
+msgid "✂️ Відповідь завелика. Звузьте запит."
+msgstr "✂️ Відповідь завелика. Звузьте запит."
+
+msgid "😕 Непередбачена помилка. Спробуйте ще раз."
+msgstr "😕 Непередбачена помилка. Спробуйте ще раз."

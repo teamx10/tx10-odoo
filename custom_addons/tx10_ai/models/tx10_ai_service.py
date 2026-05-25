@@ -50,7 +50,7 @@ class Tx10AiService(models.AbstractModel):
             _logger.warning(
                 "tx10_ai: no OpenRouter API key configured — skipping LLM call",
             )
-            return {"content": "", "usage": {}}
+            return {"content": "", "usage": {}, "error": "no_api_key", "error_code": "no_api_key"}
 
         base_url = self._get_config(
             "openrouter_base_url",
@@ -77,10 +77,10 @@ class Tx10AiService(models.AbstractModel):
                 exc.response.status_code,
                 exc.response.text[:300],
             )
-            return {"content": "", "usage": {}, "error": str(exc)}
+            return {"content": "", "usage": {}, "error": str(exc), "error_code": "http_error"}
         except httpx.RequestError as exc:
             _logger.error("tx10_ai: OpenRouter request error: %s", exc)
-            return {"content": "", "usage": {}, "error": str(exc)}
+            return {"content": "", "usage": {}, "error": str(exc), "error_code": "network_error"}
 
         data = resp.json()
         elapsed_ms = int((datetime.now() - started_at).total_seconds() * 1000)
@@ -101,6 +101,7 @@ class Tx10AiService(models.AbstractModel):
                 "usage": data.get("usage", {}),
                 "elapsed_ms": elapsed_ms,
                 "error": "empty_choices",
+                "error_code": "empty_choices",
             }
         content = (choices[0].get("message") or {}).get("content") or ""
         return {
@@ -131,6 +132,7 @@ class Tx10AiService(models.AbstractModel):
                 "usage": {},
                 "elapsed_ms": 0,
                 "error": "no_api_key",
+                "error_code": "no_api_key",
             }
 
         model = self._resolve_model(model)
@@ -161,6 +163,7 @@ class Tx10AiService(models.AbstractModel):
                 "usage": {},
                 "elapsed_ms": 0,
                 "error": str(exc),
+                "error_code": "http_error",
             }
         except httpx.RequestError as exc:
             _logger.error("tx10_ai: OpenRouter request error: %s", exc)
@@ -171,6 +174,7 @@ class Tx10AiService(models.AbstractModel):
                 "usage": {},
                 "elapsed_ms": 0,
                 "error": str(exc),
+                "error_code": "network_error",
             }
 
         elapsed_ms = int((datetime.now() - started).total_seconds() * 1000)
@@ -184,6 +188,7 @@ class Tx10AiService(models.AbstractModel):
                 "usage": data.get("usage", {}),
                 "elapsed_ms": elapsed_ms,
                 "error": "empty_choices",
+                "error_code": "empty_choices",
             }
 
         choice = choices[0]
@@ -223,4 +228,5 @@ class Tx10AiService(models.AbstractModel):
         }
         if finish_reason in ("length", "content_filter"):
             result["error"] = f"terminated_{finish_reason}"
+            result["error_code"] = f"terminated_{finish_reason}"
         return result

@@ -1,5 +1,5 @@
 {
-    "name": "TX10 AI",
+    "name": "TeamX10 AI",
     "version": "19.0.1.0.0",
     "summary": "TeamX10 AI assistant as a native Discuss bot",
     "category": "Project",
@@ -19,6 +19,8 @@
             "tx10_ai/static/src/components/model_select_widget.js",
             "tx10_ai/static/src/components/model_select_widget.xml",
             "tx10_ai/static/src/components/model_select_widget.scss",
+            "tx10_ai/static/src/systray/tx10_ai_systray.js",
+            "tx10_ai/static/src/systray/tx10_ai_systray.xml",
         ],
     },
     "installable": True,

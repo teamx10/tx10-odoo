@@ -3,7 +3,7 @@ import logging
 
 from markupsafe import Markup
 
-from odoo import api, fields, models
+from odoo import _lt, api, fields, models
 
 _logger = logging.getLogger(__name__)
 
@@ -32,6 +32,16 @@ CONFIRM_TOOLS = [
     },
 ]
 
+_ERROR_USER_MESSAGES = {
+    "no_api_key": _lt("🔌 AI-асистента ще не налаштовано. Зверніться до адміністратора."),
+    "http_error": _lt("⚠️ Сервіс AI тимчасово недоступний. Спробуйте пізніше."),
+    "network_error": _lt("⚠️ Сервіс AI тимчасово недоступний. Спробуйте пізніше."),
+    "empty_choices": _lt("🤔 Не вдалося згенерувати відповідь. Перефразуйте запит."),
+    "terminated_content_filter": _lt("🤔 Відповідь заблокована фільтром. Перефразуйте запит."),
+    "terminated_length": _lt("✂️ Відповідь завелика. Звузьте запит."),
+    "unknown": _lt("😕 Непередбачена помилка. Спробуйте ще раз."),
+}
+
 
 class Tx10AiChat(models.Model):
     _name = "tx10.ai.chat"
@@ -57,6 +67,18 @@ class Tx10AiChat(models.Model):
 
     MAX_ROUNDS = 20
     MAX_TOKENS = 100_000
+
+    # ── Error formatting ──────────────────────────────────────────────────────
+
+    def _format_error(self, error_code, exc_name=None):
+        text = str(_ERROR_USER_MESSAGES.get(error_code, _ERROR_USER_MESSAGES["unknown"]))
+        result = Markup.escape(text)
+        if self.user_id.sudo().has_group("base.group_system"):
+            code_part = Markup.escape(error_code)
+            if exc_name:
+                code_part = code_part + Markup.escape(f" ({exc_name})")
+            result = result + Markup("<br/><br/>— код: ") + code_part
+        return result
 
     # ── Cron entry point ──────────────────────────────────────────────────────
 
@@ -99,14 +121,16 @@ class Tx10AiChat(models.Model):
             bot_member.sudo()._notify_typing(True)
         try:
             response_text = self._do_agent_cycle()
-        except Exception:
+        except Exception as exc:
             _logger.exception("tx10_ai: _do_agent_cycle failed for chat %s", self.id)
-            response_text = Markup("Вибачте, сталася помилка. Спробуйте ще раз.")
+            response_text = self._format_error("unknown", exc_name=type(exc).__name__)
         finally:
             if bot_member:
                 bot_member.sudo()._notify_typing(False)
 
-        if response_text and self.channel_id:
+        if not response_text:
+            response_text = self._format_error("unknown")
+        if self.channel_id:
             self.channel_id.sudo().message_post(
                 author_id=bot_partner.id,
                 body=response_text,
@@ -185,7 +209,9 @@ class Tx10AiChat(models.Model):
         )
         self.invalidate_recordset()
 
-        if llm_result.get("error") or llm_result.get("finish_reason") == "stop":
+        if llm_result.get("error"):
+            return self._format_error(llm_result.get("error_code") or "unknown")
+        if llm_result.get("finish_reason") == "stop":
             return Markup.escape(llm_result.get("content") or "")
 
         # Process tool calls — response_parts are Markup throughout to avoid XSS
