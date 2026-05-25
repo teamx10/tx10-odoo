@@ -197,3 +197,32 @@ class TestTx10AiNlConfirm(TransactionCase):
         chat._do_agent_cycle()
         pending_msg.invalidate_recordset()
         self.assertEqual(pending_msg.status, "rejected")
+
+
+@tagged("tx10_ai", "post_install", "-at_install")
+class TestTx10AiBootstrap(TransactionCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.bot_partner = cls.env.ref("tx10_ai.partner_ai_bot")
+
+    def test_bootstrap_creates_dm_channel(self):
+        user = _make_manager_user(self.env, "bootstrap_user")
+        user.sudo().write({"tx10_ai_state": "not_initialized"})
+        user.with_user(user)._on_webclient_bootstrap()
+        channel = self.env["discuss.channel"].search([
+            ("channel_type", "=", "chat"),
+            ("channel_member_ids.partner_id", "=", self.bot_partner.id),
+            ("channel_member_ids.partner_id", "=", user.partner_id.id),
+        ])
+        self.assertTrue(channel, "Bootstrap must create a DM channel with the bot")
+        chat = self.env["tx10.ai.chat"].search([("channel_id", "=", channel.id)])
+        self.assertTrue(chat, "Bootstrap must link a tx10.ai.chat to the channel")
+        self.assertEqual(chat.user_id, user)
+
+    def test_bootstrap_no_duplicate_on_second_call(self):
+        user = _make_manager_user(self.env, "bootstrap_user2")
+        user.with_user(user)._on_webclient_bootstrap()
+        user.with_user(user)._on_webclient_bootstrap()
+        chats = self.env["tx10.ai.chat"].search([("user_id", "=", user.id)])
+        self.assertEqual(len(chats), 1, "Second bootstrap must not create duplicate chat")
