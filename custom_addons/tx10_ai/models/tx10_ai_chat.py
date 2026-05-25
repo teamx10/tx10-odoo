@@ -285,7 +285,7 @@ class Tx10AiChat(models.Model):
         if method in ("create", "write"):
             self.env["tx10.ai.agent"]._validate_write_values(model, values)
 
-        user_env = self.env.with_user(self.user_id)
+        user_env = self.env(user=self.user_id)
         if method == "create":
             record = user_env[model].create(values)
             msg.write({"executed_by_id": self.user_id.id, "executed_at": fields.Datetime.now()})
