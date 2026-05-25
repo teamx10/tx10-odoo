@@ -150,8 +150,13 @@ class AiChatController(http.Controller):
                 continue
 
             if tool_name in agent._CLIENT_TOOLS:
+                action_xmlid = agent.resolve_navigation_action(args.get("model"))
                 client_calls.append(
-                    {"tool_call_id": tool_call_id, "name": tool_name, "args": args},
+                    {
+                        "tool_call_id": tool_call_id,
+                        "name": tool_name,
+                        "args": {**args, "action_xml_id": action_xmlid},
+                    },
                 )
                 continue
 
@@ -195,11 +200,12 @@ class AiChatController(http.Controller):
 
         mid = int(message_id)
 
-        # BLOCKER #1: atomic CAS — only one confirm wins
+        # atomic CAS — only one confirm wins; ownership check prevents cross-user mutation
         env.cr.execute(
             "UPDATE solar_ai_message SET status='confirmed' "
-            "WHERE id = %s AND status = 'pending_confirmation'",
-            [mid],
+            "WHERE id = %s AND status = 'pending_confirmation' "
+            "AND chat_id IN (SELECT id FROM solar_ai_chat WHERE user_id = %s)",
+            [mid, env.user.id],
         )
         if env.cr.rowcount == 0:
             env["solar.ai.message"].invalidate_model()
@@ -238,8 +244,9 @@ class AiChatController(http.Controller):
 
         env.cr.execute(
             "UPDATE solar_ai_message SET status='rejected' "
-            "WHERE id = %s AND status = 'pending_confirmation'",
-            [mid],
+            "WHERE id = %s AND status = 'pending_confirmation' "
+            "AND chat_id IN (SELECT id FROM solar_ai_chat WHERE user_id = %s)",
+            [mid, env.user.id],
         )
         env["solar.ai.message"].invalidate_model()
 
@@ -254,6 +261,11 @@ class AiChatController(http.Controller):
         method = action.get("method")
         values = action.get("values") or {}
         record_id = action.get("id")
+
+        # Re-validate against agent whitelist at execution time (TOCTOU guard).
+        # proposed_action is stored in DB and could be mutated directly via ORM.
+        if method in ("create", "write"):
+            env["solar.ai.agent"]._validate_write_values(model, values)
 
         if method == "create":
             record = env[model].create(values)
@@ -276,22 +288,36 @@ class AiChatController(http.Controller):
     def _build_messages(self, chat, user_text, tool_results=None):
         """Reconstruct message history from DB for the LLM context window.
 
-        MAJOR #12: search(limit=20) instead of message_ids[-20:] — avoids loading all rows.
-        MAJOR #14: reconstruct LLM wire format from stored arguments_str.
+        Guarantees a valid OpenAI-format sequence: every assistant tool_call must have a
+        matching tool response. Calls without a response are pruned so the API never sees
+        a dangling tool_call (which causes a 400 error). This covers:
+          - client-tool calls (navigate_to_record / open_model_list) whose results are
+            never persisted to DB but may arrive in the incoming tool_results parameter
+          - already-corrupted rows in older chats (no migration required)
         """
         recent = request.env["solar.ai.message"].search(
             [("chat_id", "=", chat.id)],
             order="id desc",
             limit=20,
         )
+
+        # Build the set of tool_call_ids that have a response available.
+        responded_ids = {
+            msg.tool_call_id
+            for msg in recent
+            if msg.role == "tool" and msg.tool_call_id
+        }
+        if tool_results:
+            responded_ids.update(tr["tool_call_id"] for tr in tool_results if tr.get("tool_call_id"))
+
         messages = []
         for msg in reversed(recent):
             if msg.role == "user":
                 messages.append({"role": "user", "content": msg.content or ""})
             elif msg.role == "assistant":
-                entry = {"role": "assistant", "content": msg.content}
+                entry = {"role": "assistant", "content": msg.content or ""}
                 if msg.tool_calls_json:
-                    entry["tool_calls"] = [
+                    paired = [
                         {
                             "id": tc.get("id", ""),
                             "type": "function",
@@ -301,7 +327,12 @@ class AiChatController(http.Controller):
                             },
                         }
                         for tc in msg.tool_calls_json
+                        if tc.get("id", "") in responded_ids
                     ]
+                    if paired:
+                        entry["tool_calls"] = paired
+                    elif not msg.content:
+                        continue
                 messages.append(entry)
             elif msg.role == "tool" and msg.tool_call_id:
                 messages.append(

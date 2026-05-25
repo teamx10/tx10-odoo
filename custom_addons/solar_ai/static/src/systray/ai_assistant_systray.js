@@ -1,10 +1,17 @@
 /** @odoo-module */
-import { Component, reactive } from "@odoo/owl";
+import { Component, useState } from "@odoo/owl";
 import { registry } from "@web/core/registry";
+import { Reactive } from "@web/core/utils/reactive";
 import { AiAssistantPanel } from "../components/ai_assistant_panel";
 
-// Shared reactive state — outlives any single component instance.
-const _panelState = reactive({ open: false, chatId: null });
+// Reactive subclass so the object IS the proxy — mutations from the service
+// go through the proxy set-trap and notify all useState() subscribers.
+class PanelState extends Reactive {
+    open = false;
+    chatId = null;
+}
+
+const _panelState = new PanelState();
 
 registry.category("services").add("solar_ai_assistant", {
     start() {
@@ -32,15 +39,16 @@ export class AiAssistantSystray extends Component {
     static components = { AiAssistantPanel };
 
     setup() {
-        this.panelState = _panelState;
+        // useState links _panelState mutations to this component's render cycle.
+        this.panelState = useState(_panelState);
     }
 
-    toggle() {
-        _panelState.open = !_panelState.open;
-        if (!_panelState.open) {
-            _panelState.chatId = null;
+    toggle = () => {
+        this.panelState.open = !this.panelState.open;
+        if (!this.panelState.open) {
+            this.panelState.chatId = null;
         }
-    }
+    };
 }
 
 registry.category("systray").add("solar_ai.assistant", {

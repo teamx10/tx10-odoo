@@ -10,6 +10,7 @@
         "security/solar_ai_security.xml",
         "data/config_params.xml",
         "views/solar_ai_chat_views.xml",
+        "views/res_config_settings_views.xml",
     ],
     "assets": {
         "web.assets_backend": [
@@ -18,6 +19,9 @@
             "solar_ai/static/src/components/ai_assistant_panel.js",
             "solar_ai/static/src/components/ai_assistant_panel.xml",
             "solar_ai/static/src/components/ai_assistant_panel.scss",
+            "solar_ai/static/src/components/model_select_widget.js",
+            "solar_ai/static/src/components/model_select_widget.xml",
+            "solar_ai/static/src/components/model_select_widget.scss",
         ],
         "web.assets_tests": [
             "solar_ai/static/tests/tours/ai_panel.js",
