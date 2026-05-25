@@ -12,23 +12,36 @@
                 t-on-input="onInput"
                 t-on-focus="onFocus"
                 t-on-blur="onBlur"
+                aria-haspopup="listbox"
+                t-att-aria-expanded="state.isOpen ? 'true' : 'false'"
+                aria-controls="solar_ai_model_listbox"
+                aria-label="Select AI model"
             />
 
             <t t-if="state.isOpen and groups.length">
-                <div class="o_solar_ai_model_dropdown">
+                <div class="o_solar_ai_model_dropdown"
+                     id="solar_ai_model_listbox"
+                     role="listbox"
+                     aria-label="Available AI models">
                     <t t-foreach="groups" t-as="group" t-key="group[0]">
-                        <div class="o_solar_ai_model_group_header" t-esc="group[0]"/>
-                        <t t-foreach="group[1]" t-as="model" t-key="model.id">
-                            <div
-                                class="o_solar_ai_model_item"
-                                t-att-class="{ o_selected: model.id === state.query }"
-                                t-on-mousedown.prevent="() => onSelect(model.id)"
-                            >
-                                <span class="o_solar_ai_model_name" t-esc="model.name"/>
-                                <span class="o_solar_ai_model_id" t-esc="model.id"/>
-                                <span class="o_solar_ai_model_price" t-esc="formatPrice(model)"/>
-                            </div>
-                        </t>
+                        <div role="group" t-att-aria-label="group[0]">
+                            <div class="o_solar_ai_model_group_header"
+                                 role="presentation"
+                                 t-esc="group[0]"/>
+                            <t t-foreach="group[1]" t-as="model" t-key="model.id">
+                                <div
+                                    class="o_solar_ai_model_item"
+                                    role="option"
+                                    t-att-class="{ o_selected: model.id === state.query }"
+                                    t-att-aria-selected="model.id === state.query ? 'true' : 'false'"
+                                    t-on-mousedown.prevent="() => onSelect(model.id)"
+                                >
+                                    <span class="o_solar_ai_model_name" t-esc="model.name"/>
+                                    <span class="o_solar_ai_model_id" t-esc="model.id"/>
+                                    <span class="o_solar_ai_model_price" t-esc="formatPrice(model)"/>
+                                </div>
+                            </t>
+                        </div>
                     </t>
                 </div>
             </t>

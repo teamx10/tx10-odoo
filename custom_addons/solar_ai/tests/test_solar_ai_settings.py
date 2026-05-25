@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 from odoo.tests import TransactionCase, tagged
 
 
@@ -151,6 +153,91 @@ class TestSolarAiConfigSettings(TransactionCase):
             service._resolve_model(None),
             "anthropic/claude-sonnet-4-5",
         )
+
+
+@tagged("post_install", "-at_install")
+class TestBuildMessages(TransactionCase):
+    """Unit tests for AiChatController._build_messages dangling tool_call pruning (MAJOR #6)."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.chat = cls.env["solar.ai.chat"].create({"user_id": cls.env.user.id})
+
+    def _build(self, user_text="Next turn", tool_results=None):
+        from odoo.addons.solar_ai.controllers.ai_chat import (  # noqa: PLC0415
+            AiChatController,
+        )
+
+        ctrl = AiChatController()
+        with patch("odoo.addons.solar_ai.controllers.ai_chat.request") as mock_req:
+            mock_req.env = self.env
+            return ctrl._build_messages(self.chat, user_text, tool_results)
+
+    def test_dangling_tool_call_is_skipped(self):
+        """Empty assistant msg whose tool_call has no response is dropped from LLM context."""
+        self.env["solar.ai.message"].create([
+            {"chat_id": self.chat.id, "role": "user", "content": "Hello"},
+            {
+                "chat_id": self.chat.id,
+                "role": "assistant",
+                "content": "",
+                "tool_calls_json": [{"id": "tc_dangling", "name": "find_records", "arguments_str": "{}"}],
+            },
+        ])
+        messages = self._build()
+        for msg in messages:
+            self.assertFalse(
+                msg.get("role") == "assistant" and "tool_calls" in msg,
+                "Dangling tool_call must not appear in LLM context",
+            )
+
+    def test_matched_tool_call_is_included(self):
+        """Assistant tool_call with a matching tool response is preserved in LLM context."""
+        self.env["solar.ai.message"].create([
+            {"chat_id": self.chat.id, "role": "user", "content": "Find tasks"},
+            {
+                "chat_id": self.chat.id,
+                "role": "assistant",
+                "content": "",
+                "tool_calls_json": [{"id": "tc_matched", "name": "find_records", "arguments_str": "{}"}],
+            },
+            {
+                "chat_id": self.chat.id,
+                "role": "tool",
+                "tool_call_id": "tc_matched",
+                "content": '[{"id": 1, "display_name": "Task A"}]',
+            },
+        ])
+        messages = self._build()
+        assistant_msgs = [m for m in messages if m.get("role") == "assistant" and "tool_calls" in m]
+        self.assertTrue(assistant_msgs, "Matched tool_call must appear in LLM context")
+        self.assertEqual(assistant_msgs[0]["tool_calls"][0]["id"], "tc_matched")
+
+
+@tagged("post_install", "-at_install")
+class TestResolveNavigationAction(TransactionCase):
+    """Unit tests for SolarAiAgent.resolve_navigation_action (MAJOR #9)."""
+
+    def test_invalid_xmlid_returns_none(self):
+        """Returns None when the stored action xmlid is absent from the DB."""
+        agent = self.env["solar.ai.agent"]
+        bad_registry = {
+            "project.project": {
+                "capabilities": {"navigate"},
+                "write_fields": set(),
+                "read_fields": [],
+                "action": "solar_ai.xmlid_that_will_never_exist_abc123",
+            },
+        }
+        with patch.object(type(agent), "_MODEL_REGISTRY", bad_registry):
+            result = agent.resolve_navigation_action("project.project")
+        self.assertIsNone(result, "Must return None when action xmlid is not found in DB")
+
+    def test_unknown_model_returns_none(self):
+        """Returns None for a model not present in _MODEL_REGISTRY."""
+        result = self.env["solar.ai.agent"].resolve_navigation_action("nonexistent.model")
+        self.assertIsNone(result)
 
 
 @tagged("post_install", "-at_install")

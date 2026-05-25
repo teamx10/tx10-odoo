@@ -200,11 +200,12 @@ class AiChatController(http.Controller):
 
         mid = int(message_id)
 
-        # BLOCKER #1: atomic CAS — only one confirm wins
+        # atomic CAS — only one confirm wins; ownership check prevents cross-user mutation
         env.cr.execute(
             "UPDATE solar_ai_message SET status='confirmed' "
-            "WHERE id = %s AND status = 'pending_confirmation'",
-            [mid],
+            "WHERE id = %s AND status = 'pending_confirmation' "
+            "AND chat_id IN (SELECT id FROM solar_ai_chat WHERE user_id = %s)",
+            [mid, env.user.id],
         )
         if env.cr.rowcount == 0:
             env["solar.ai.message"].invalidate_model()
@@ -243,8 +244,9 @@ class AiChatController(http.Controller):
 
         env.cr.execute(
             "UPDATE solar_ai_message SET status='rejected' "
-            "WHERE id = %s AND status = 'pending_confirmation'",
-            [mid],
+            "WHERE id = %s AND status = 'pending_confirmation' "
+            "AND chat_id IN (SELECT id FROM solar_ai_chat WHERE user_id = %s)",
+            [mid, env.user.id],
         )
         env["solar.ai.message"].invalidate_model()
 
