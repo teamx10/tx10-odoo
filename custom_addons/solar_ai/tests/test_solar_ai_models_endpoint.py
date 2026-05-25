@@ -160,25 +160,16 @@ class TestSolarAiModelsEndpoint(TransactionCase):
 
     def test_http_status_error_falls_back_to_stale_cache(self):
         """OpenRouter 4xx/5xx (HTTPStatusError) → return stale cache, no 500."""
-        # TODO: implement this test
-        # Context: _get_models catches (RequestError, HTTPStatusError).
-        # HTTPStatusError is raised by resp.raise_for_status() when OpenRouter returns
-        # 401/429/500. This branch was previously uncaught → server 500.
-        #
-        # Hint: httpx.HTTPStatusError requires (message, request=..., response=...).
-        # Build a mock request and response so the constructor doesn't raise.
-        # Then side_effect the mock so _fetch_and_cache → raise_for_status raises it.
-        #
-        # Assert: result has stale models (len == 2) and was_cached is True.
         param = self.env["ir.config_parameter"].sudo()
         param.set_param("solar_ai.models_cache", json.dumps(_EXPECTED_MODELS))
         param.set_param("solar_ai.models_cache_ts", str(int(time.time()) - 90_000))
 
-        ctrl = self._get_service()  # noqa: F841
-        # YOUR CODE HERE (~7 lines):
-        # 1. Build an httpx.HTTPStatusError with mock request + response
-        # 2. Patch httpx.get to raise it
-        # 3. Call ctrl._get_models(self.env) and unpack the tuple
-        # 4. Assert len(result) == 2 and was_cached is True
-        msg = "test_http_status_error_falls_back_to_stale_cache not implemented"
-        raise NotImplementedError(msg)
+        ctrl = self._get_service()
+        mock_request = MagicMock(spec=httpx.Request)
+        mock_response = MagicMock(spec=httpx.Response)
+        mock_response.status_code = 429
+        exc = httpx.HTTPStatusError("429 Too Many Requests", request=mock_request, response=mock_response)
+        with patch("httpx.get", side_effect=exc):
+            result, was_cached = ctrl._get_models(self.env)
+        self.assertEqual(len(result), 2, "Must return stale cache on HTTP 4xx/5xx")
+        self.assertTrue(was_cached)
