@@ -313,6 +313,9 @@ class Tx10AiChat(models.Model):
             "AND chat_id IN (SELECT id FROM tx10_ai_chat WHERE user_id = %s)",
             [msg.id, self.user_id.id],
         )
+        if self.env.cr.rowcount == 0:
+            msg.invalidate_recordset()
+            return "Дія вже оброблена."
         msg.invalidate_recordset()
         return "Зрозумів, дію скасовано."
 
