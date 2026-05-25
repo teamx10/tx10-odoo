@@ -119,3 +119,19 @@ class TestTx10AiChat(TransactionCase):
         self.env["tx10.ai.message"].create({"chat_id": chat.id, "role": "user", "content": "hi"})
         result = chat._do_agent_cycle()
         self.assertIn("вичерпано", result.lower())
+
+
+@tagged("tx10_ai", "post_install", "-at_install")
+class TestTx10AiData(TransactionCase):
+    def test_bot_partner_exists(self):
+        partner = self.env.ref("tx10_ai.partner_ai_bot")
+        self.assertEqual(partner.name, "TeamX10 AI")
+        self.assertFalse(partner.active)
+
+    def test_config_params_loaded(self):
+        base_url = self.env["ir.config_parameter"].get_param("tx10_ai.openrouter_base_url")
+        self.assertEqual(base_url, "https://openrouter.ai/api/v1")
+
+    def test_cron_exists(self):
+        cron = self.env.ref("tx10_ai.ir_cron_run_agent")
+        self.assertTrue(cron.active)
