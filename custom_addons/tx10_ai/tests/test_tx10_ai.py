@@ -74,3 +74,48 @@ class TestTx10AiModels(TransactionCase):
         self.assertEqual(msg.status, "done")
         self.assertEqual(msg.role, "user")
         self.assertIn(msg, chat.message_ids)
+
+
+@tagged("tx10_ai", "post_install", "-at_install")
+class TestTx10AiChat(TransactionCase):
+
+    def test_create_chat_defaults(self):
+        chat = self.env["tx10.ai.chat"].create({"name": "T", "user_id": self.env.uid})
+        self.assertEqual(chat.state, "active")
+        self.assertEqual(chat.budget_state, "ok")
+        self.assertFalse(chat.pending_agent_run)
+        self.assertFalse(chat.channel_id)
+
+    def test_build_messages_empty(self):
+        chat = self.env["tx10.ai.chat"].create({"name": "T", "user_id": self.env.uid})
+        self.assertEqual(chat._build_messages(), [])
+
+    def test_build_messages_user_then_assistant(self):
+        chat = self.env["tx10.ai.chat"].create({"name": "T", "user_id": self.env.uid})
+        self.env["tx10.ai.message"].create({"chat_id": chat.id, "role": "user", "content": "Q"})
+        self.env["tx10.ai.message"].create({"chat_id": chat.id, "role": "assistant", "content": "A"})
+        msgs = chat._build_messages()
+        self.assertEqual(len(msgs), 2)
+        self.assertEqual(msgs[0]["role"], "user")
+        self.assertEqual(msgs[1]["role"], "assistant")
+
+    def test_reject_action_sets_status(self):
+        chat = self.env["tx10.ai.chat"].create({"name": "T", "user_id": self.env.uid})
+        pending = self.env["tx10.ai.message"].create({
+            "chat_id": chat.id,
+            "role": "assistant",
+            "status": "pending_confirmation",
+            "proposed_action": {"model": "project.task", "method": "create", "values": {"name": "X"}},
+            "action_summary": "Створити задачу X",
+        })
+        chat._reject_action(pending)
+        pending.invalidate_recordset()
+        self.assertEqual(pending.status, "rejected")
+
+    def test_budget_exhausted_returns_message(self):
+        chat = self.env["tx10.ai.chat"].create({
+            "name": "T", "user_id": self.env.uid, "budget_state": "exhausted"
+        })
+        self.env["tx10.ai.message"].create({"chat_id": chat.id, "role": "user", "content": "hi"})
+        result = chat._do_agent_cycle()
+        self.assertIn("вичерпано", result.lower())
