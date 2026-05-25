@@ -18,6 +18,7 @@ class SolarAiAgent(models.AbstractModel):
             "capabilities": {"read", "navigate", "write"},
             "write_fields": {"name", "description", "user_id", "date_start", "date"},
             "read_fields": ["id", "name", "description", "user_id"],
+            "action": "project.open_view_project_all",
         },
         "project.task": {
             "capabilities": {"read", "navigate", "write"},
@@ -37,11 +38,13 @@ class SolarAiAgent(models.AbstractModel):
                 "project_id",
                 "stage_id",
             ],
+            "action": "project.action_view_all_task",
         },
         "res.partner": {
             "capabilities": {"read", "navigate", "write"},
             "write_fields": {"name", "email", "phone", "mobile", "comment"},
             "read_fields": ["id", "name", "email", "phone"],
+            "action": "contacts.action_contacts",
         },
         "solar.document": {
             "capabilities": {"read", "navigate"},
@@ -67,6 +70,13 @@ class SolarAiAgent(models.AbstractModel):
         return (
             self._get_model_registry().get(model, {}).get("read_fields", ["id", "name"])
         )
+
+    def resolve_navigation_action(self, model):
+        """Return the window-action xml_id for a navigable model, or None."""
+        xmlid = self._get_model_registry().get(model, {}).get("action")
+        if xmlid and self.env.ref(xmlid, raise_if_not_found=False):
+            return xmlid
+        return None
 
     # ------------------------------------------------------------------
     # Tool definitions

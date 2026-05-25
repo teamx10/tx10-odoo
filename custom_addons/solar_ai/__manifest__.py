@@ -19,6 +19,9 @@
             "solar_ai/static/src/components/ai_assistant_panel.js",
             "solar_ai/static/src/components/ai_assistant_panel.xml",
             "solar_ai/static/src/components/ai_assistant_panel.scss",
+            "solar_ai/static/src/components/model_select_widget.js",
+            "solar_ai/static/src/components/model_select_widget.xml",
+            "solar_ai/static/src/components/model_select_widget.scss",
         ],
         "web.assets_tests": [
             "solar_ai/static/tests/tours/ai_panel.js",

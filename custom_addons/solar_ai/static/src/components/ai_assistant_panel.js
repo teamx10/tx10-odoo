@@ -1,5 +1,6 @@
 /** @odoo-module */
 import { Component, useState, useRef, onMounted } from "@odoo/owl";
+import { rpc } from "@web/core/network/rpc";
 import { useService } from "@web/core/utils/hooks";
 import { _t } from "@web/core/l10n/translation";
 
@@ -11,7 +12,6 @@ export class AiAssistantPanel extends Component {
     };
 
     setup() {
-        this.rpc = useService("rpc");
         this.action = useService("action");
         this.state = useState({
             messages: [],
@@ -32,7 +32,7 @@ export class AiAssistantPanel extends Component {
         ];
     }
 
-    async sendMessage(text) {
+    sendMessage = async (text) => {
         text = (text || this.state.inputValue).trim();
         if (!text || this.state.thinking) return;
 
@@ -43,9 +43,9 @@ export class AiAssistantPanel extends Component {
 
         await this._runAgentLoop(text, null);
         this.state.thinking = false;
-    }
+    };
 
-    async _runAgentLoop(userMessage, toolResults, maxRounds = 10) {
+    _runAgentLoop = async (userMessage, toolResults, maxRounds = 10) => {
         let round = 0;
         let pendingUserMessage = userMessage;
         let pendingToolResults = toolResults;
@@ -54,7 +54,7 @@ export class AiAssistantPanel extends Component {
             round++;
             let resp;
             try {
-                resp = await this.rpc("/solar_ai/agent/step", {
+                resp = await rpc("/solar_ai/agent/step", {
                     message: pendingUserMessage,
                     chat_id: this.state.chatId,
                     tool_results: pendingToolResults,
@@ -86,26 +86,40 @@ export class AiAssistantPanel extends Component {
         }
 
         this.state.messages.push({ role: "error", content: _t("Досягнуто ліміт кроків.") });
-    }
+    };
 
-    async _executeClientTools(toolCalls) {
+    _executeClientTools = async (toolCalls) => {
         const results = [];
         for (const tc of toolCalls) {
             try {
                 if (tc.name === "navigate_to_record") {
-                    await this.action.doAction({
-                        type: "ir.actions.act_window",
-                        res_model: tc.args.model,
-                        res_id: tc.args.id,
-                        views: [[false, "form"]],
-                    });
+                    if (tc.args.action_xml_id) {
+                        await this.action.doAction(tc.args.action_xml_id, {
+                            clearBreadcrumbs: true,
+                            viewType: "form",
+                            props: { resId: tc.args.id },
+                        });
+                    } else {
+                        await this.action.doAction({
+                            type: "ir.actions.act_window",
+                            res_model: tc.args.model,
+                            res_id: tc.args.id,
+                            views: [[false, "form"]],
+                        });
+                    }
                     results.push({ tool_call_id: tc.tool_call_id, content: "navigated" });
                 } else if (tc.name === "open_model_list") {
-                    await this.action.doAction({
-                        type: "ir.actions.act_window",
-                        res_model: tc.args.model,
-                        views: [[false, "list"]],
-                    });
+                    if (tc.args.action_xml_id) {
+                        await this.action.doAction(tc.args.action_xml_id, {
+                            clearBreadcrumbs: true,
+                        });
+                    } else {
+                        await this.action.doAction({
+                            type: "ir.actions.act_window",
+                            res_model: tc.args.model,
+                            views: [[false, "list"]],
+                        });
+                    }
                     results.push({ tool_call_id: tc.tool_call_id, content: "opened_list" });
                 }
             } catch (e) {
@@ -113,9 +127,9 @@ export class AiAssistantPanel extends Component {
             }
         }
         return results;
-    }
+    };
 
-    onKeydown(ev) {
+    onKeydown = (ev) => {
         if (ev.key === "Enter" && !ev.shiftKey) {
             ev.preventDefault();
             this.sendMessage();
@@ -123,5 +137,5 @@ export class AiAssistantPanel extends Component {
         if (ev.key === "Escape") {
             this.props.onClose();
         }
-    }
+    };
 }
