@@ -81,6 +81,10 @@ class Tx10AiChat(models.Model):
             return
         self.invalidate_recordset()
 
+        if not self.channel_id:
+            _logger.warning("tx10_ai: chat %s has no channel_id, skipping agent run", self.id)
+            return
+
         bot_partner = self.env.ref("tx10_ai.partner_ai_bot", raise_if_not_found=False)
         if not bot_partner:
             _logger.warning("tx10_ai: partner_ai_bot not found, cannot run agent")
@@ -97,7 +101,7 @@ class Tx10AiChat(models.Model):
             response_text = self._do_agent_cycle()
         except Exception:
             _logger.exception("tx10_ai: _do_agent_cycle failed for chat %s", self.id)
-            response_text = "Вибачте, сталася помилка. Спробуйте ще раз."
+            response_text = Markup("Вибачте, сталася помилка. Спробуйте ще раз.")
         finally:
             if bot_member:
                 bot_member.sudo()._notify_typing(False)
@@ -105,7 +109,7 @@ class Tx10AiChat(models.Model):
         if response_text and self.channel_id:
             self.channel_id.sudo().message_post(
                 author_id=bot_partner.id,
-                body=Markup(response_text),
+                body=response_text,
                 message_type="comment",
                 silent=True,
                 subtype_xmlid="mail.mt_comment",
@@ -130,7 +134,7 @@ class Tx10AiChat(models.Model):
             return self._handle_confirmation(pending_msg)
 
         if self.budget_state == "exhausted":
-            return "Ліміт токенів вичерпано. Почніть нову розмову."
+            return Markup("Ліміт токенів вичерпано. Почніть нову розмову.")
 
         messages = self._build_messages()
         lang = self.user_id.lang or "uk_UA"
@@ -182,10 +186,10 @@ class Tx10AiChat(models.Model):
         self.invalidate_recordset()
 
         if llm_result.get("error") or llm_result.get("finish_reason") == "stop":
-            return llm_result.get("content") or ""
+            return Markup.escape(llm_result.get("content") or "")
 
-        # Process tool calls
-        response_parts = [llm_result.get("content") or ""]
+        # Process tool calls — response_parts are Markup throughout to avoid XSS
+        response_parts = [Markup.escape(llm_result.get("content") or "")]
         for tc in llm_result.get("tool_calls") or []:
             tool_name = tc.get("name", "")
             args = tc.get("parsed_args") or {}
@@ -217,15 +221,15 @@ class Tx10AiChat(models.Model):
             if result.get("status") == "pending_confirmation":
                 summary = (result.get("result") or {}).get("summary", "")
                 response_parts.append(
-                    f"\n{summary}\n\nПідтвердити? Відповідайте «так» або «ні»."
+                    Markup.escape(summary) + Markup("\n\nПідтвердити? Відповідайте «так» або «ні».")
                 )
-            # Navigate tool → HTML link
+            # Navigate tool → HTML link (already Markup from agent)
             elif isinstance(result.get("result"), dict) and "html_link" in (
                 result.get("result") or {}
             ):
-                response_parts.append(" " + result["result"]["html_link"])
+                response_parts.append(Markup(" ") + result["result"]["html_link"])
 
-        return "".join(filter(None, response_parts))
+        return Markup("").join(filter(None, response_parts))
 
     # ── Confirmation flow ─────────────────────────────────────────────────────
 
@@ -259,7 +263,7 @@ class Tx10AiChat(models.Model):
                 return self._execute_confirmed_action(pending_msg)
             if tc.get("name") == "reject_action":
                 return self._reject_action(pending_msg)
-        return "Не вдалося розпізнати відповідь. Будь ласка, відповідайте «так» або «ні»."
+        return Markup("Не вдалося розпізнати відповідь. Будь ласка, відповідайте «так» або «ні».")
 
     def _execute_confirmed_action(self, msg):
         self.env.cr.execute(
@@ -270,7 +274,7 @@ class Tx10AiChat(models.Model):
         )
         if self.env.cr.rowcount == 0:
             msg.invalidate_recordset()
-            return "Дія вже оброблена."
+            return Markup("Дія вже оброблена.")
         msg.invalidate_recordset()
 
         action = msg.proposed_action or {}
@@ -288,11 +292,11 @@ class Tx10AiChat(models.Model):
             link = Markup("<a href='#' data-oe-model='%s' data-oe-id='%s'>%s</a>") % (
                 model, record.id, record.display_name
             )
-            return f"Готово! Запис створено: {link}"
+            return Markup("Готово! Запис створено: ") + link
         if method == "write":
             user_env[model].browse(int(action.get("id"))).write(values)
             msg.write({"executed_by_id": self.user_id.id, "executed_at": fields.Datetime.now()})
-            return "Готово! Запис оновлено."
+            return Markup("Готово! Запис оновлено.")
         if method == "activity_schedule":
             record = user_env[model].browse(int(action.get("id")))
             date_str = action.get("date")
@@ -303,7 +307,7 @@ class Tx10AiChat(models.Model):
                 date_deadline=deadline,
             )
             msg.write({"executed_by_id": self.user_id.id, "executed_at": fields.Datetime.now()})
-            return "Готово! Активність запланована."
+            return Markup("Готово! Активність запланована.")
         raise ValueError(f"Unknown method: {method!r}")
 
     def _reject_action(self, msg):
@@ -315,9 +319,9 @@ class Tx10AiChat(models.Model):
         )
         if self.env.cr.rowcount == 0:
             msg.invalidate_recordset()
-            return "Дія вже оброблена."
+            return Markup("Дія вже оброблена.")
         msg.invalidate_recordset()
-        return "Зрозумів, дію скасовано."
+        return Markup("Зрозумів, дію скасовано.")
 
     # ── Message history builder ───────────────────────────────────────────────
 
