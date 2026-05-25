@@ -8,27 +8,6 @@ from odoo import models
 
 _logger = logging.getLogger(__name__)
 
-CLASSIFICATION_SYSTEM_PROMPT = """You are a document classifier for solar energy installation projects.
-Given document text, classify it into one of the following types and return JSON:
-{"document_type_code": "<code>", "confidence": <0.0-1.0>, "extracted_summary": "<brief summary>"}
-
-Document type codes:
-- bill_electricity: electricity consumption bill
-- roof_measurement: roof measurement or survey report
-- site_plan_bti: site plan, BTI (Bureau of Technical Inventory) scheme
-- topographic_survey: topographic survey map
-- client_brief: client requirements or technical brief
-- equipment_spec: equipment datasheet or specification
-- single_line_diagram: electrical single-line or wiring diagram
-- permit: building or grid connection permit
-- handover_act: handover or acceptance act
-- commissioning_report: commissioning or testing report
-- structural_calculation: structural engineering calculation
-- grid_connection_agreement: grid connection agreement
-- unknown: none of the above
-
-Respond with ONLY the JSON object, no markdown fences."""
-
 
 class Tx10AiService(models.AbstractModel):
     _name = "tx10.ai.service"
@@ -245,16 +224,3 @@ class Tx10AiService(models.AbstractModel):
         if finish_reason in ("length", "content_filter"):
             result["error"] = f"terminated_{finish_reason}"
         return result
-
-    def classify_document_text(self, text, max_chars=4000):
-        """Classify document text, return dict with 'document_type_code' and 'confidence'."""
-        truncated = text[:max_chars] if len(text) > max_chars else text
-        messages = [
-            {"role": "system", "content": CLASSIFICATION_SYSTEM_PROMPT},
-            {"role": "user", "content": truncated},
-        ]
-        result = self.chat(messages)
-        try:
-            return json.loads(result["content"])
-        except (json.JSONDecodeError, KeyError):
-            return {"document_type_code": "unknown", "confidence": 0.0}
