@@ -48,11 +48,6 @@ class Tx10AiAgent(models.AbstractModel):
             "read_fields": ["id", "name", "email", "phone"],
             "action": "contacts.action_contacts",
         },
-        "solar.document": {
-            "capabilities": {"read", "navigate"},
-            "write_fields": set(),
-            "read_fields": ["id", "name", "document_type_id"],
-        },
     }
 
     def _get_model_registry(self):
@@ -452,7 +447,6 @@ class Tx10AiAgent(models.AbstractModel):
             except (ValueError, TypeError):
                 raise ValueError(f"date_deadline must be YYYY-MM-DD, got: {date_str!r}")
 
-        self._check_capability("schedule_activity", model=model)
         record = self.env[model].browse(record_id)
         if not record.exists():
             return {"error": "record_not_found"}
