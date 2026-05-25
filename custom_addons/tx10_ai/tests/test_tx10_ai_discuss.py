@@ -210,15 +210,14 @@ class TestTx10AiBootstrap(TransactionCase):
         user = _make_manager_user(self.env, "bootstrap_user")
         user.sudo().write({"tx10_ai_state": "not_initialized"})
         user.with_user(user)._on_webclient_bootstrap()
-        channel = self.env["discuss.channel"].search([
-            ("channel_type", "=", "chat"),
-            ("channel_member_ids.partner_id", "=", self.bot_partner.id),
-            ("channel_member_ids.partner_id", "=", user.partner_id.id),
-        ])
-        self.assertTrue(channel, "Bootstrap must create a DM channel with the bot")
-        chat = self.env["tx10.ai.chat"].search([("channel_id", "=", channel.id)])
-        self.assertTrue(chat, "Bootstrap must link a tx10.ai.chat to the channel")
+        chat = self.env["tx10.ai.chat"].search([("user_id", "=", user.id)])
+        self.assertTrue(chat, "Bootstrap must create a tx10.ai.chat record")
         self.assertEqual(chat.user_id, user)
+        channel = chat.channel_id
+        self.assertTrue(channel, "chat must have a linked channel")
+        member_partner_ids = channel.channel_member_ids.mapped("partner_id.id")
+        self.assertIn(self.bot_partner.id, member_partner_ids, "Bot must be a channel member")
+        self.assertIn(user.partner_id.id, member_partner_ids, "User must be a channel member")
 
     def test_bootstrap_no_duplicate_on_second_call(self):
         user = _make_manager_user(self.env, "bootstrap_user2")

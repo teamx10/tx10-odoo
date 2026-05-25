@@ -11,6 +11,7 @@ class ResUsers(models.Model):
         string="TX10 AI Status",
         readonly=True,
         required=False,
+        default="not_initialized",
     )
 
     @property
@@ -34,7 +35,7 @@ class ResUsers(models.Model):
             self.sudo().tx10_ai_state = "initialized"
             return
 
-        channel = self.env["discuss.channel"].with_user(self)._get_or_create_chat(
+        channel = self.env["discuss.channel"].with_user(self.id)._get_or_create_chat(
             [bot_partner.id, self.partner_id.id]
         )
         self.env["tx10.ai.chat"].sudo().create({
