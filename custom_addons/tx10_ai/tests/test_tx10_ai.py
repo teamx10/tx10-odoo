@@ -58,9 +58,9 @@ class TestTx10AiService(TransactionCase):
 
 
 @tagged("tx10_ai", "post_install", "-at_install")
-class TestTx10AiMessage(TransactionCase):
+class TestTx10AiModels(TransactionCase):
 
-    def test_create_message_defaults(self):
+    def test_create_message(self):
         # tx10.ai.chat must exist first as FK parent
         chat = self.env["tx10.ai.chat"].create({
             "name": "Test Chat",
