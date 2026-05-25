@@ -95,7 +95,7 @@ export class ModelSelectWidget extends Component {
     };
 
     formatPrice = (model) => {
-        const fmt = (n) => n.toFixed(2).replace(/\.?0+$/, "");
+        const fmt = (n) => n == null ? "?" : Number(n).toFixed(2).replace(/\.?0+$/, "");
         return `$${fmt(model.pricing_in)} / $${fmt(model.pricing_out)}`;
     };
 }
