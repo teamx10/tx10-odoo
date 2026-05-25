@@ -83,7 +83,7 @@ class Tx10AiOlgProxy(http.Controller):
         body = request.get_json_data()
         prompt = (
             body.get("prompt")
-            or "Generate a professional website text for a solar energy company."
+            or "Generate professional placeholder text."
         )[:MAX_PROMPT_CHARS]
 
         service = request.env["tx10.ai.service"]

@@ -15,4 +15,7 @@ class TestTx10AiGuards(TransactionCase):
     def test_rate_limit_blocks_over_limit(self):
         from odoo.addons.tx10_ai.controllers._guards import _rate_limit_state
         _rate_limit_state[99998] = [__import__("time").monotonic()] * RATE_LIMIT_MAX_CALLS
-        self.assertFalse(check_rate_limit(99998))
+        try:
+            self.assertFalse(check_rate_limit(99998))
+        finally:
+            _rate_limit_state.pop(99998, None)
