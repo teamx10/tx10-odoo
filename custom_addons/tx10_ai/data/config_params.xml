@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- noupdate="1": seeded on fresh install, preserved on -u tx10_ai upgrade.
+     API key is NOT seeded here — must be set via Settings UI. -->
 <odoo noupdate="1">
     <record id="tx10_ai_openrouter_base_url" model="ir.config_parameter">
         <field name="key">tx10_ai.openrouter_base_url</field>
