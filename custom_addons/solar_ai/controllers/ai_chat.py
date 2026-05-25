@@ -262,6 +262,11 @@ class AiChatController(http.Controller):
         values = action.get("values") or {}
         record_id = action.get("id")
 
+        # Re-validate against agent whitelist at execution time (TOCTOU guard).
+        # proposed_action is stored in DB and could be mutated directly via ORM.
+        if method in ("create", "write"):
+            env["solar.ai.agent"]._validate_write_values(model, values)
+
         if method == "create":
             record = env[model].create(values)
             return {"created_id": record.id}
@@ -303,7 +308,7 @@ class AiChatController(http.Controller):
             if msg.role == "tool" and msg.tool_call_id
         }
         if tool_results:
-            responded_ids.update(tr.get("tool_call_id", "") for tr in tool_results)
+            responded_ids.update(tr["tool_call_id"] for tr in tool_results if tr.get("tool_call_id"))
 
         messages = []
         for msg in reversed(recent):

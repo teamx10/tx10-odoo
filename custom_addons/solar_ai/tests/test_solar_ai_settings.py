@@ -241,6 +241,62 @@ class TestResolveNavigationAction(TransactionCase):
 
 
 @tagged("post_install", "-at_install")
+class TestAgentConfirmOwnership(TransactionCase):
+    """Negative test: agent_confirm/reject SQL ownership guard (MAJOR #12 / MAJOR re-check #5)."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        pm_group = cls.env.ref("project.group_project_manager")
+        cls.user_a = cls.env["res.users"].create({
+            "name": "PM A (IDOR test)",
+            "login": "solar_ai_pm_a_idor",
+            "groups_id": [(4, pm_group.id)],
+        })
+        cls.user_b = cls.env["res.users"].create({
+            "name": "PM B (IDOR test)",
+            "login": "solar_ai_pm_b_idor",
+            "groups_id": [(4, pm_group.id)],
+        })
+
+    def test_user_b_cannot_confirm_user_a_message(self):
+        """SQL ownership guard: User B's confirm attempt must affect 0 rows."""
+        chat_a = self.env["solar.ai.chat"].create({"user_id": self.user_a.id})
+        msg = self.env["solar.ai.message"].create({
+            "chat_id": chat_a.id,
+            "role": "assistant",
+            "status": "pending_confirmation",
+            "proposed_action": {"model": "project.task", "method": "create", "values": {"name": "X"}},
+        })
+        self.env.cr.execute(
+            "UPDATE solar_ai_message SET status='confirmed' "
+            "WHERE id = %s AND status = 'pending_confirmation' "
+            "AND chat_id IN (SELECT id FROM solar_ai_chat WHERE user_id = %s)",
+            [msg.id, self.user_b.id],
+        )
+        self.assertEqual(self.env.cr.rowcount, 0, "User B must not confirm User A's pending message")
+        self.env.cr.execute("SELECT status FROM solar_ai_message WHERE id = %s", [msg.id])
+        self.assertEqual(self.env.cr.fetchone()[0], "pending_confirmation")
+
+    def test_user_a_can_confirm_own_message(self):
+        """SQL ownership guard: User A can confirm their own message."""
+        chat_a = self.env["solar.ai.chat"].create({"user_id": self.user_a.id})
+        msg = self.env["solar.ai.message"].create({
+            "chat_id": chat_a.id,
+            "role": "assistant",
+            "status": "pending_confirmation",
+            "proposed_action": {"model": "project.task", "method": "create", "values": {"name": "X"}},
+        })
+        self.env.cr.execute(
+            "UPDATE solar_ai_message SET status='confirmed' "
+            "WHERE id = %s AND status = 'pending_confirmation' "
+            "AND chat_id IN (SELECT id FROM solar_ai_chat WHERE user_id = %s)",
+            [msg.id, self.user_a.id],
+        )
+        self.assertEqual(self.env.cr.rowcount, 1, "User A must be able to confirm their own message")
+
+
+@tagged("post_install", "-at_install")
 class TestSolarAiSettingsView(TransactionCase):
     """Guard: Solar AI fields must appear in the rendered settings form (xpath silent-fail guard, finding #5)."""
 
