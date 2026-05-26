@@ -88,6 +88,7 @@ New OWL component uses `mail.store.openChat({partnerId})` — native Discuss DM,
 |---|------|--------|--------|
 | 1 | Font Awesome icon: prefer `fa-robot` (FA5) | Used `fa-comments` (FA4) | Odoo 19 ships FA4.7 — `fa-robot` absent in `font-awesome.css` |
 | 2 | `_lt` from `odoo.tools.translate` | `from odoo import _lt` | Odoo 19 pattern (confirmed in `project_stock_account`) |
+| 3 | Systray: `useService("rpc")` + `openChat({partnerId})` | Direct `rpc` import + `Thread.getOrFetch` by `channel_id` | (a) `useService("rpc")` absent in Odoo 19 — use `import { rpc } from "@web/core/network/rpc"`. (b) `openChat({partnerId})` fails for bot partner (no linked `res.users`) — use channel_id directly. Endpoint changed from `/tx10_ai/bot_partner` → `/tx10_ai/bot_channel`. |
 
 ---
 
@@ -97,6 +98,7 @@ New OWL component uses `mail.store.openChat({partnerId})` — native Discuss DM,
 - T21: `gitnexus detect-changes` → risk=LOW, affected_processes=0, 14 symbols changed, all in `tx10_ai` ✓
 - Ruff: no new errors introduced in modified files ✓
 - Impact analysis: `_do_agent_cycle` risk=LOW (d=1: `_run_agent` only), `_run_agent` risk=LOW (d=1: `_cron_run_pending_chats` only) ✓
+- E2E (Playwright, 2026-05-26): systray click opens DM ✓, bot replies `🔌 AI-асистента ще не налаштовано` on empty key ✓, admin sees `— код: no_api_key` ✓, no Solar AI in navbar/settings ✓
 
 ---
 
