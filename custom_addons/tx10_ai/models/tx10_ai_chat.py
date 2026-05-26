@@ -291,6 +291,16 @@ class Tx10AiChat(models.Model):
                 return self._reject_action(pending_msg)
         return Markup("Не вдалося розпізнати відповідь. Будь ласка, відповідайте «так» або «ні».")
 
+    @staticmethod
+    def _require_action_id(action):
+        raw_id = action.get("id")
+        if raw_id is None:
+            raise ValueError("proposed_action is missing required 'id'")
+        try:
+            return int(raw_id)
+        except (TypeError, ValueError):
+            raise ValueError(f"proposed_action 'id' is not an integer: {raw_id!r}")
+
     def _execute_confirmed_action(self, msg):
         self.env.cr.execute(
             "UPDATE tx10_ai_message SET status='confirmed' "
@@ -320,11 +330,11 @@ class Tx10AiChat(models.Model):
             )
             return Markup("Готово! Запис створено: ") + link
         if method == "write":
-            user_env[model].browse(int(action.get("id"))).write(values)
+            user_env[model].browse(self._require_action_id(action)).write(values)
             msg.write({"executed_by_id": self.user_id.id, "executed_at": fields.Datetime.now()})
             return Markup("Готово! Запис оновлено.")
         if method == "activity_schedule":
-            record = user_env[model].browse(int(action.get("id")))
+            record = user_env[model].browse(self._require_action_id(action))
             date_str = action.get("date")
             deadline = dt.date.fromisoformat(date_str) if date_str else None
             record.activity_schedule(

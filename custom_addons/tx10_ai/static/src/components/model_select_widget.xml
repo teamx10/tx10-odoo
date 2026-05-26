@@ -5,6 +5,7 @@
             <input
                 t-ref="input"
                 type="text"
+                role="combobox"
                 t-att-class="{ 'o_input': true, 'is-invalid': state.invalid }"
                 t-att-value="state.query"
                 t-att-placeholder="props.placeholder or 'anthropic/claude-sonnet-4-5'"
@@ -12,8 +13,12 @@
                 t-on-input="onInput"
                 t-on-focus="onFocus"
                 t-on-blur="onBlur"
+                t-on-keydown="onKeydown"
                 aria-haspopup="listbox"
+                aria-autocomplete="list"
                 t-att-aria-expanded="state.isOpen ? 'true' : 'false'"
+                t-att-aria-busy="state.loading ? 'true' : 'false'"
+                t-att-aria-activedescendant="state.isOpen and state.activeId ? optId(state.activeId) : ''"
                 aria-controls="tx10_ai_model_listbox"
                 aria-label="Select AI model"
             />
@@ -26,13 +31,14 @@
                     <t t-foreach="groups" t-as="group" t-key="group[0]">
                         <div role="group" t-att-aria-label="group[0]">
                             <div class="o_tx10_ai_model_group_header"
-                                 role="presentation"
+                                 aria-hidden="true"
                                  t-esc="group[0]"/>
                             <t t-foreach="group[1]" t-as="model" t-key="model.id">
                                 <div
                                     class="o_tx10_ai_model_item"
                                     role="option"
-                                    t-att-class="{ o_selected: model.id === state.query }"
+                                    t-att-id="optId(model.id)"
+                                    t-att-class="{ o_selected: model.id === state.query, o_active: model.id === state.activeId }"
                                     t-att-aria-selected="model.id === state.query ? 'true' : 'false'"
                                     t-on-mousedown.prevent="() => onSelect(model.id)"
                                 >
@@ -46,20 +52,22 @@
                 </div>
             </t>
 
-            <t t-if="state.loading">
-                <span class="o_tx10_ai_model_hint">Loading models…</span>
-            </t>
-            <t t-elif="state.invalid">
-                <span class="o_tx10_ai_model_hint text-danger">Виберіть модель зі списку</span>
-            </t>
-            <t t-elif="state.error">
-                <span class="o_tx10_ai_model_hint text-danger" t-esc="state.error"/>
-            </t>
-            <t t-elif="currentModel">
-                <span class="o_tx10_ai_model_hint">
-                    <t t-esc="formatPrice(currentModel)"/> per 1M tokens
-                </span>
-            </t>
+            <div role="status" aria-live="polite">
+                <t t-if="state.loading">
+                    <span class="o_tx10_ai_model_hint">Loading models…</span>
+                </t>
+                <t t-elif="state.invalid">
+                    <span class="o_tx10_ai_model_hint text-danger">Виберіть модель зі списку</span>
+                </t>
+                <t t-elif="state.error">
+                    <span class="o_tx10_ai_model_hint text-danger" t-esc="state.error"/>
+                </t>
+                <t t-elif="currentModel">
+                    <span class="o_tx10_ai_model_hint">
+                        <t t-esc="formatPrice(currentModel)"/> per 1M tokens
+                    </span>
+                </t>
+            </div>
         </div>
     </t>
 </templates>

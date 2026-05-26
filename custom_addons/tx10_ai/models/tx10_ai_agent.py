@@ -27,7 +27,7 @@ class Tx10AiAgent(models.AbstractModel):
             "write_fields": {
                 "name",
                 "description",
-                "user_id",
+                "user_ids",
                 "project_id",
                 "date_deadline",
                 "stage_id",
@@ -36,7 +36,7 @@ class Tx10AiAgent(models.AbstractModel):
                 "id",
                 "name",
                 "description",
-                "user_id",
+                "user_ids",
                 "project_id",
                 "stage_id",
             ],

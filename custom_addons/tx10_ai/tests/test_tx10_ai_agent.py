@@ -75,6 +75,32 @@ class TestTx10AiAgent(TransactionCase):
         project.invalidate_model()
         self.assertEqual(project.name, "Update Test")
 
+    def test_get_record_summary_returns_safe_fields(self):
+        task = self.env["project.task"].create({
+            "name": "Summary Task",
+            "project_id": self.env["project.project"].create({"name": "P"}).id,
+        })
+        result = self.env["tx10.ai.agent"]._tool_get_record_summary(
+            {"model": "project.task", "id": task.id}
+        )
+        self.assertEqual(result.get("name"), "Summary Task")
+        self.assertNotIn("error", result)
+
+    def test_get_record_summary_nonexistent_returns_error(self):
+        result = self.env["tx10.ai.agent"]._tool_get_record_summary(
+            {"model": "project.task", "id": 999999}
+        )
+        self.assertEqual(result.get("error"), "record_not_found")
+
+    def test_open_model_list_returns_link(self):
+        result = self.env["tx10.ai.agent"]._tool_open_model_list({"model": "project.task"})
+        self.assertIn("html_link", result)
+        self.assertIn("/odoo/action-", result["html_link"])
+
+    def test_open_model_list_unknown_model_returns_error(self):
+        result = self.env["tx10.ai.agent"]._tool_open_model_list({"model": "res.country"})
+        self.assertEqual(result.get("error"), "no_action_for_model")
+
     def test_toctou_write_re_validates_whitelist(self):
         """_execute_confirmed_action re-validates at execution time — not just at proposal."""
         chat = self.env["tx10.ai.chat"].create({"name": "T", "user_id": self.env.user.id})

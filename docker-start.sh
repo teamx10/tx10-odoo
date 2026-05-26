@@ -5,11 +5,21 @@ REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$REPO_DIR"
 
 UPDATE_MODULE=""
+INSTALL_MODULE=""
+UNINSTALL_MODULE=""
 
 while [[ $# -gt 0 ]]; do
     case "$1" in
         -u)
             UPDATE_MODULE="${2:-}"
+            shift 2
+            ;;
+        -i)
+            INSTALL_MODULE="${2:-}"
+            shift 2
+            ;;
+        --uninstall)
+            UNINSTALL_MODULE="${2:-}"
             shift 2
             ;;
         *)
@@ -18,6 +28,29 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
+
+if [[ -n "$UNINSTALL_MODULE" ]]; then
+    echo "To uninstall '$UNINSTALL_MODULE', go to:"
+    echo "  Settings → Apps → search \"$UNINSTALL_MODULE\" → Uninstall"
+    echo ""
+    echo "Or via Odoo shell (container must be running):"
+    echo "  docker compose exec odoo odoo shell -d isolar --no-http"
+    echo "  >>> env['ir.module.module'].search([('name','=','$UNINSTALL_MODULE')]).button_uninstall()"
+    echo "  >>> env.cr.commit()"
+    exit 0
+fi
+
+if [[ -n "$INSTALL_MODULE" ]]; then
+    echo "Installing module: $INSTALL_MODULE ..."
+    docker compose stop odoo
+    docker compose run --rm odoo odoo -d isolar -i "$INSTALL_MODULE" --stop-after-init
+    docker compose up -d odoo
+    echo ""
+    echo "Module '$INSTALL_MODULE' installed."
+    echo "  URL:   http://localhost:8069"
+    echo "  Login: admin / admin"
+    exit 0
+fi
 
 if [[ -n "$UPDATE_MODULE" ]]; then
     echo "Updating module: $UPDATE_MODULE ..."

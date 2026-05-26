@@ -112,3 +112,36 @@ New OWL component uses `mail.store.openChat({partnerId})` — native Discuss DM,
 | `test_http_error_posts_service_unavailable` | HTTP 500 → friendly "недоступний" message |
 | `test_admin_sees_error_code` | Admin (`base.group_system`) sees `— код: no_api_key` |
 | `test_non_admin_no_error_code` | Regular user does NOT see error code |
+
+---
+
+## IT-Team Review (2026-05-26) — Fixed
+
+Full 9-persona review of `feat/tx10-ai-discuss → develop`: 3 BLOCKER, 19 MAJOR.
+Scope chosen: **Critical + quick wins**. Fixed in this branch:
+
+| # | Finding | Fix |
+|---|---------|-----|
+| B1 | IDOR — `project_user` had ACL but no record rule → read all users' chats | ir.rule extended to `group_project_user`; `migrations/19.0.1.1.0/post-migration.py` force-updates the noupdate rule on existing installs |
+| M6 | `int(action.get('id'))` → TypeError when id absent | `_require_action_id()` helper raises clear `ValueError` |
+| M2 | Leftover `solar_ai/` source on disk | Removed (was only stale `__pycache__`) |
+| M4 | docker-compose installed `solar_demo` not `tx10_ai` | `-i solar_demo,tx10_ai` |
+| M10 | Systray click silent when channel not bootstrapped | Re-fetch on click + warning notification fallback |
+| M11-13 | model_select_widget a11y: keyboard nav, group ARIA, loading announce | ArrowUp/Down/Enter/Escape + `aria-activedescendant`; `aria-hidden` header; `role=status aria-live` |
+| M14-19 | Untested: olg_generate_placeholder, activity_schedule confirm, get_record_summary/open_model_list tools, ambiguous-confirm fallback, CAS already-processed | Tests added (10 new). `get_record_summary` bug uncovered: registry used `user_id` (invalid on Odoo 19 `project.task`) → fixed to `user_ids` |
+| M16 | T-ADM E2E was vacuous (read stale DB) | Rewritten to trigger a fresh error and assert the new reply |
+
+Verification: 63 Python tests pass (0 failed, 0 errors); 10 Playwright E2E pass.
+
+### Deferred to follow-up (not in this branch)
+
+| # | Finding | Why deferred |
+|---|---------|--------------|
+| B2 | No migration to clean orphan `solar_ai` DB records + copy prod API key to `tx10_ai` key | Production deployment concern; dev DB already cleaned manually. Needs a deploy-time migration + key-copy step before prod rollout |
+| B3 | PR too large (103 files, +13.9k LOC) | Branch already built as one unit; splitting now = churn. Process note for future work |
+| M1 | Rate limiter in-memory per-worker | Known limitation (TODO in `_guards.py`); needs Redis/PG-backed shared limiter |
+| M3 | OpenRouter API key plaintext in `ir.config_parameter` | Documented design decision (`_AT_REST_NOTE`); secret-manager migration is a separate effort |
+| M5 | ir_cron fires every 1 min unconditionally | Low impact; add min-interval/jitter guard later |
+| M7 | Chat row lock held across 25s LLM HTTP call | Architectural; move HTTP outside the locked transaction (queue/commit-before-call) |
+| M8 | Global `discuss.channel._message_post_after_hook` member query on every post | Perf; add cheap pre-filter before the member search |
+| M9 | `tx10_ai` manifest hard-depends on `solar_project` vertical | Decouple to make the bot reusable outside the solar deployment |

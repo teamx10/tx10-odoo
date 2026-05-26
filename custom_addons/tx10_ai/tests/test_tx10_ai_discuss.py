@@ -182,6 +182,28 @@ class TestTx10AiNlConfirm(TransactionCase):
         self.assertTrue(task, "Task must be created after NL confirm")
 
     @patch("httpx.post")
+    def test_nl_confirm_ambiguous_returns_fallback(self, mock_post):
+        """LLM returns no confirm/reject tool_call → friendly fallback, action stays pending."""
+        mock_post.return_value = _make_llm_response(content="Я не впевнений", tool_calls=[])
+        channel = self.env["discuss.channel"].with_user(self.user)._get_or_create_chat(
+            [self.bot_partner.id, self.user.partner_id.id]
+        )
+        chat = self.env["tx10.ai.chat"].create({
+            "name": "DM", "user_id": self.user.id, "channel_id": channel.id,
+        })
+        pending_msg = self.env["tx10.ai.message"].create({
+            "chat_id": chat.id, "role": "assistant", "status": "pending_confirmation",
+            "proposed_action": {"model": "project.task", "method": "create", "values": {"name": "X"}},
+            "action_summary": "Створити X",
+        })
+        self.env["tx10.ai.message"].create({"chat_id": chat.id, "role": "user", "content": "можливо"})
+        result = chat._do_agent_cycle()
+        self.assertIn("розпізнати", result.lower())
+        pending_msg.invalidate_recordset()
+        self.assertEqual(pending_msg.status, "pending_confirmation",
+                         "Ambiguous reply must leave the action pending")
+
+    @patch("httpx.post")
     def test_nl_confirm_no_rejects_action(self, mock_post):
         mock_post.return_value = self._make_confirm_tool_response("reject_action")
         channel = self.env["discuss.channel"].with_user(self.user)._get_or_create_chat(

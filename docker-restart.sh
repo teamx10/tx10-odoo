@@ -5,4 +5,4 @@ REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$REPO_DIR"
 
 "$REPO_DIR/docker-stop.sh"
-"$REPO_DIR/docker-start.sh" -u tx10_ai
+"$REPO_DIR/docker-start.sh" -i tx10_ai

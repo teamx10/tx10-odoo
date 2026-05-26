@@ -183,6 +183,55 @@ class TestTx10AiChat(TransactionCase):
         pending.invalidate_recordset()
         self.assertEqual(pending.status, "rejected")
 
+    def test_execute_confirmed_action_activity_schedule(self):
+        project = self.env["project.project"].create({"name": "Act Sched P"})
+        task = self.env["project.task"].create({"name": "Act Task", "project_id": project.id})
+        chat = self.env["tx10.ai.chat"].create({"name": "T", "user_id": self.env.uid})
+        msg = self.env["tx10.ai.message"].create({
+            "chat_id": chat.id, "role": "assistant", "status": "pending_confirmation",
+            "proposed_action": {
+                "model": "project.task", "method": "activity_schedule", "id": task.id,
+                "summary": "Follow up", "date": "2030-01-01",
+            },
+            "action_summary": "Запланувати активність",
+        })
+        result = chat._execute_confirmed_action(msg)
+        self.assertIn("запланована", result.lower())
+        task.invalidate_recordset()
+        self.assertTrue(task.activity_ids, "activity_schedule must create an activity")
+
+    def test_execute_confirmed_action_missing_id_raises(self):
+        chat = self.env["tx10.ai.chat"].create({"name": "T", "user_id": self.env.uid})
+        msg = self.env["tx10.ai.message"].create({
+            "chat_id": chat.id, "role": "assistant", "status": "pending_confirmation",
+            "proposed_action": {"model": "project.task", "method": "write", "values": {"name": "X"}},
+            "action_summary": "Оновити без id",
+        })
+        with self.assertRaises(ValueError):
+            chat._execute_confirmed_action(msg)
+
+    def test_execute_confirmed_action_already_processed(self):
+        """CAS: confirming an already-processed message is idempotent (rowcount==0)."""
+        chat = self.env["tx10.ai.chat"].create({"name": "T", "user_id": self.env.uid})
+        msg = self.env["tx10.ai.message"].create({
+            "chat_id": chat.id, "role": "assistant", "status": "confirmed",
+            "proposed_action": {"model": "project.task", "method": "create", "values": {"name": "X"}},
+            "action_summary": "Створити X",
+        })
+        result = chat._execute_confirmed_action(msg)
+        self.assertIn("вже оброблена", result.lower())
+
+    def test_reject_action_already_processed(self):
+        """CAS: rejecting an already-processed message is idempotent (rowcount==0)."""
+        chat = self.env["tx10.ai.chat"].create({"name": "T", "user_id": self.env.uid})
+        msg = self.env["tx10.ai.message"].create({
+            "chat_id": chat.id, "role": "assistant", "status": "rejected",
+            "proposed_action": {"model": "project.task", "method": "create", "values": {"name": "X"}},
+            "action_summary": "Створити X",
+        })
+        result = chat._reject_action(msg)
+        self.assertIn("вже оброблена", result.lower())
+
     def test_budget_exhausted_returns_message(self):
         chat = self.env["tx10.ai.chat"].create({
             "name": "T", "user_id": self.env.uid, "budget_state": "exhausted"
@@ -293,3 +342,35 @@ class TestTx10AiOlgProxy(HttpCase):
             self.assertTrue(check_rate_limit(synthetic_id))
         self.assertFalse(check_rate_limit(synthetic_id))
         _rate_limit_state.pop(synthetic_id, None)
+
+    @patch("httpx.post")
+    def test_olg_generate_placeholder_returns_success(self, mock_post):
+        mock_post.return_value.status_code = 200
+        mock_post.return_value.raise_for_status = MagicMock()
+        mock_post.return_value.json.return_value = {
+            "choices": [{"message": {"content": "Placeholder text", "role": "assistant"}}],
+            "usage": {},
+        }
+        resp = self.url_open(
+            "/tx10_ai/olg/api/olg/1/generate_placeholder",
+            data=_json.dumps({"jsonrpc": "2.0", "method": "call", "id": 1, "params": {"prompt": "Write intro"}}),
+            headers={"Content-Type": "application/json"},
+        )
+        self.assertEqual(resp.status_code, 200)
+        result = resp.json()
+        self.assertEqual(result.get("result", {}).get("status"), "success")
+        self.assertEqual(result["result"].get("content"), "Placeholder text")
+
+    def test_olg_generate_placeholder_rejects_non_manager_user(self):
+        """Non-PM user is denied on the placeholder endpoint too."""
+        self.env["res.users"].create({
+            "name": "Plain User PH", "login": "plain_ph@test.local", "password": "plain_pass",
+            "group_ids": [(6, 0, [self.env.ref("base.group_user").id])],
+        })
+        self.authenticate("plain_ph@test.local", "plain_pass")
+        resp = self.url_open(
+            "/tx10_ai/olg/api/olg/1/generate_placeholder",
+            data=_json.dumps({"jsonrpc": "2.0", "method": "call", "id": 1, "params": {"prompt": "Hi"}}),
+            headers={"Content-Type": "application/json"},
+        )
+        self.assertIn("error", resp.json())

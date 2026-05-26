@@ -17,6 +17,7 @@ export class ModelSelectWidget extends Component {
             loading: false,
             error: null,
             invalid: false,
+            activeId: null,
         });
         this._blurTimer = null;
         onMounted(() => this._loadModels());
@@ -50,18 +51,50 @@ export class ModelSelectWidget extends Component {
         return Object.entries(map).sort(([a], [b]) => a.localeCompare(b));
     }
 
+    get flatModels() {
+        return this.groups.flatMap(([, models]) => models);
+    }
+
     get currentModel() {
         return this.state.models.find((m) => m.id === this.state.query) || null;
+    }
+
+    optId(modelId) {
+        return "tx10_ai_opt_" + modelId.replace(/[^a-zA-Z0-9]/g, "_");
     }
 
     onInput = (ev) => {
         this.state.query = ev.target.value;
         this.state.isOpen = true;
         this.state.invalid = false;
+        this.state.activeId = null;
     };
 
     onFocus = () => {
         if (this.state.models.length) this.state.isOpen = true;
+    };
+
+    onKeydown = (ev) => {
+        const list = this.flatModels;
+        if (ev.key === "ArrowDown") {
+            ev.preventDefault();
+            this.state.isOpen = true;
+            const i = list.findIndex((m) => m.id === this.state.activeId);
+            const next = list[Math.min(i + 1, list.length - 1)] || list[0];
+            if (next) this.state.activeId = next.id;
+        } else if (ev.key === "ArrowUp") {
+            ev.preventDefault();
+            const i = list.findIndex((m) => m.id === this.state.activeId);
+            const prev = i > 0 ? list[i - 1] : list[0];
+            if (prev) this.state.activeId = prev.id;
+        } else if (ev.key === "Enter") {
+            if (this.state.isOpen && this.state.activeId) {
+                ev.preventDefault();
+                this.onSelect(this.state.activeId);
+            }
+        } else if (ev.key === "Escape") {
+            this.state.isOpen = false;
+        }
     };
 
     onBlur = () => {
@@ -87,6 +120,7 @@ export class ModelSelectWidget extends Component {
         this.state.query = modelId;
         this.state.isOpen = false;
         this.state.invalid = false;
+        this.state.activeId = null;
         this._commit(modelId);
     };
 

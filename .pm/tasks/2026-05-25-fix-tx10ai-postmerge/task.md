@@ -5,7 +5,7 @@ id: 2026-05-25-fix-tx10ai-postmerge
 title: Fix tx10_ai post-merge issues
 goal: Исправить три проблемы после деплоя tx10_ai: бот не отвечает, старый solar_ai navbar ещё виден, ошибки молча проглатываются
 size: M
-status: flow-pending
+status: done
 created: 2026-05-25
 design: /Users/akoziar/.claude/plans/pr-https-github-com-teamx10-tx10-odoo-p-hashed-peacock.md
 -->

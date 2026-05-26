@@ -49,6 +49,12 @@
         &:hover,
         &.o_selected { background: var(--o-action-light, #e8f4ff); }
 
+        &.o_active {
+            background: var(--o-action-light, #e8f4ff);
+            outline: 2px solid var(--o-action, #0d6efd);
+            outline-offset: -2px;
+        }
+
         .o_tx10_ai_model_name {
             grid-row: 1;
             grid-column: 1;
