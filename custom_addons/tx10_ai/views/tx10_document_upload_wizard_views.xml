@@ -31,7 +31,7 @@
                         </list>
                     </field>
                     <div class="alert alert-warning" role="alert"
-                         invisible="state != 'done' or not result_line_ids.filtered(lambda l: l.status == 'needs_review')">
+                         invisible="state != 'done' or not has_needs_review">
                         Деякі файли потребують ручної перевірки
                     </div>
                 </sheet>

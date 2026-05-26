@@ -1,0 +1,5 @@
+expert: spec-reviewer
+phase: technical
+iteration: 3
+blocking: false
+notes: Both F1 fixes confirmed — attachment.raw used everywhere, ai_extracted_data receives dict result, _safe_zip_read() pattern correct; no blocking issues.

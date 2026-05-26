@@ -15,6 +15,13 @@ class Tx10DocumentUploadWizard(models.TransientModel):
     )
     result_line_ids = fields.One2many("tx10.document.result.line", "wizard_id", readonly=True)
     state = fields.Selection([("upload", "Upload"), ("done", "Done")], default="upload")
+    has_needs_review = fields.Boolean(compute="_compute_has_needs_review")
+
+    def _compute_has_needs_review(self):
+        for wizard in self:
+            wizard.has_needs_review = any(
+                line.status == "needs_review" for line in wizard.result_line_ids
+            )
 
     def action_classify_and_file(self):
         project = self.project_id

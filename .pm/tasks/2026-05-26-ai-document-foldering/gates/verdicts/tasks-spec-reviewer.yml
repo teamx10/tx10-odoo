@@ -1,0 +1,4 @@
+expert: spec-reviewer
+phase: tasks
+blocking: false
+notes: i18n/uk.po absent from architecture.md component map (minor drift); parallel-opportunities ASCII diagram malformed but textual description correct; all phases, dependencies (T2 after T11), estimates, and file lists sound for M-sized task.
