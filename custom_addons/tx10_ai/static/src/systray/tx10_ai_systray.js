@@ -2,24 +2,31 @@
 import { Component, onWillStart } from "@odoo/owl";
 import { registry } from "@web/core/registry";
 import { useService } from "@web/core/utils/hooks";
+import { rpc } from "@web/core/network/rpc";
 
 export class Tx10AiSystray extends Component {
     static template = "tx10_ai.Systray";
 
     setup() {
         this.store = useService("mail.store");
-        this.rpc = useService("rpc");
-        this.partnerId = null;
+        this.channelId = null;
         onWillStart(async () => {
-            const result = await this.rpc("/tx10_ai/bot_partner", {});
-            this.partnerId = result?.partner_id ?? null;
+            try {
+                const result = await rpc("/tx10_ai/bot_channel", {});
+                this.channelId = result?.channel_id ?? null;
+            } catch {
+                // Not authenticated or channel not created yet
+            }
         });
     }
 
-    onClick() {
-        if (this.partnerId) {
-            this.store.openChat({ partnerId: this.partnerId });
-        }
+    async onClick() {
+        if (!this.channelId) return;
+        const thread = await this.store.Thread.getOrFetch({
+            id: this.channelId,
+            model: "discuss.channel",
+        });
+        thread?.open({ focus: true });
     }
 }
 
