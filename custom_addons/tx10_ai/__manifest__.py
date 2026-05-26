@@ -1,6 +1,6 @@
 {
     "name": "TeamX10 AI",
-    "version": "19.0.1.1.0",
+    "version": "19.0.1.2.0",
     "summary": "TeamX10 AI assistant as a native Discuss bot",
     "category": "Project",
     "depends": ["mail", "project", "solar_project", "base_setup", "web"],
@@ -13,6 +13,8 @@
         "data/ir_cron.xml",
         "views/res_config_settings_views.xml",
         "views/tx10_ai_chat_views.xml",
+        "views/tx10_document_folder_views.xml",
+        "views/tx10_document_upload_wizard_views.xml",
     ],
     "assets": {
         "web.assets_backend": [

@@ -6,6 +6,8 @@ import httpx
 
 from odoo import models
 
+from .tx10_document_classifier import classify as _classify_document
+
 _logger = logging.getLogger(__name__)
 
 
@@ -230,3 +232,6 @@ class Tx10AiService(models.AbstractModel):
             result["error"] = f"terminated_{finish_reason}"
             result["error_code"] = f"terminated_{finish_reason}"
         return result
+
+    def classify_document_text(self, text, filename=""):
+        return _classify_document(text, filename)

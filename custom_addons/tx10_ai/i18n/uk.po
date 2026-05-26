@@ -30,3 +30,30 @@ msgstr "✂️ Відповідь завелика. Звузьте запит."
 
 msgid "😕 Непередбачена помилка. Спробуйте ще раз."
 msgstr "😕 Непередбачена помилка. Спробуйте ще раз."
+
+msgid "Upload and Classify Documents"
+msgstr "Завантажити та класифікувати документи"
+
+msgid "Загрузити документи"
+msgstr "Загрузити документи"
+
+msgid "Класифікувати"
+msgstr "Класифікувати"
+
+msgid "Папки"
+msgstr "Папки"
+
+msgid "Duplicate — already exists in project"
+msgstr "Дублікат — вже існує в проекті"
+
+msgid "Some files require manual review"
+msgstr "Деякі файли потребують ручної перевірки"
+
+msgid "Folder"
+msgstr "Папка"
+
+msgid "Needs Review"
+msgstr "Потребує перевірки"
+
+msgid "Document Folder"
+msgstr "Папка документів"
