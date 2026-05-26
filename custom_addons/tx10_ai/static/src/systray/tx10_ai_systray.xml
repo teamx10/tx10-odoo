@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<templates xml:space="preserve">
+    <t t-name="tx10_ai.Systray">
+        <button
+            class="o_menu_systray_item btn"
+            t-on-click="onClick"
+            title="TeamX10 AI"
+            aria-label="TeamX10 AI"
+        >
+            <i class="fa fa-comments" role="img" aria-hidden="true"/>
+        </button>
+    </t>
+</templates>

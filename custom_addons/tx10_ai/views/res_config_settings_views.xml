@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_form_tx10_ai" model="ir.ui.view">
+        <field name="name">tx10.ai.res.config.settings.view.form</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="project.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//app[@name='project']" position="inside">
+                <block title="TeamX10 AI Assistant" id="tx10_ai_assistant">
+                    <setting string="OpenRouter API Key"
+                             class="col-lg-12"
+                             help="Required for AI chat. Get it at openrouter.ai/keys. Stored as plaintext in PostgreSQL — restrict DB access in production.">
+                        <field name="tx10_ai_openrouter_api_key"
+                               widget="password"
+                               placeholder="sk-or-v1-..."
+                               options='{"autocomplete": "new-password"}'/>
+                    </setting>
+                    <setting string="Default Model"
+                             class="col-lg-12"
+                             help="OpenRouter model ID used for the AI assistant. Changes take effect on next request.">
+                        <field name="tx10_ai_default_model"
+                               widget="tx10_ai_model_select"
+                               placeholder="anthropic/claude-sonnet-4-5"/>
+                    </setting>
+                </block>
+            </xpath>
+        </field>
+    </record>
+</odoo>

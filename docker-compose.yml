@@ -25,8 +25,7 @@ services:
       HOST: db
       USER: odoo
       PASSWORD: ${DB_PASSWORD}
-      # OpenRouter key — empty = AI features inactive, no crash
-      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      # OpenRouter key is now configured via Settings UI (tx10_ai module)
     volumes:
       - ./custom_addons:/mnt/extra-addons
       - ./docker/odoo.conf:/etc/odoo/odoo.conf
@@ -36,7 +35,7 @@ services:
     # No --admin-passwd: the master password gates the DB manager, which is
     #   already disabled via list_db=False in odoo.conf. Keeping it off the
     #   command line avoids leaking it through `docker inspect` / /proc/<pid>/cmdline.
-    command: odoo -d isolar -i solar_demo --with-demo
+    command: odoo -d isolar -i solar_demo,tx10_ai --with-demo
     healthcheck:
       # python3 is guaranteed in the odoo image (curl is not); urllib avoids
       # an always-failing healthcheck that would block depends_on indefinitely.

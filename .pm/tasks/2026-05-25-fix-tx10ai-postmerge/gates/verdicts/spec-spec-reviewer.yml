@@ -1,0 +1,4 @@
+expert: spec-reviewer
+phase: spec
+blocking: false
+notes: AC-1/AC-2/AC-3 testable. DoD complete. OOS explicit. No gaps.

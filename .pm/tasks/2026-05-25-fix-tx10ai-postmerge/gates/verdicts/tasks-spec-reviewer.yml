@@ -1,0 +1,4 @@
+expert: spec-reviewer
+phase: tasks
+blocking: false
+notes: T09b added for orphan config param cleanup. 23 tasks total. Parallel opportunities preserved. Manual steps explicitly marked.

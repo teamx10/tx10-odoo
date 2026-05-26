@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="partner_ai_bot" model="res.partner">
+        <field name="name">TeamX10 AI</field>
+        <field name="active" eval="False"/>
+        <field name="email">ai@tx10.team</field>
+    </record>
+</odoo>

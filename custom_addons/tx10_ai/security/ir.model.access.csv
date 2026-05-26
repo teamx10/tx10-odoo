@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_tx10_ai_chat_manager,tx10.ai.chat manager,model_tx10_ai_chat,project.group_project_manager,1,1,1,1
+access_tx10_ai_message_manager,tx10.ai.message manager,model_tx10_ai_message,project.group_project_manager,1,1,1,1
+access_tx10_ai_chat_user,tx10.ai.chat user,model_tx10_ai_chat,project.group_project_user,1,1,1,0
+access_tx10_ai_message_user,tx10.ai.message user,model_tx10_ai_message,project.group_project_user,1,1,1,0

@@ -1,0 +1,4 @@
+expert: spec-reviewer
+phase: security
+blocking: false
+notes: Orphan API key finding documented; T09b added to tasks.md. Group check identity verified correct. sudo() scope acceptable. i18n XSS pattern enforced via Markup.escape.

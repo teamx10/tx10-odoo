@@ -1,0 +1,4 @@
+expert: spec-reviewer
+phase: test-plan
+blocking: false
+notes: Mock pattern correct (patch at module level). cache invalidation via invalidate_recordset(). Admin boundary base.group_system consistent with decisions.

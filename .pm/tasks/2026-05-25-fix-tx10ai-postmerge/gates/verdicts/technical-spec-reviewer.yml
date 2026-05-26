@@ -1,0 +1,4 @@
+expert: spec-reviewer
+phase: technical
+blocking: false
+notes: FA version confirmed (FA4.7 only, fa-comments fallback). sudo() on partner browse justified (active=False). LazyTranslate import path specified.

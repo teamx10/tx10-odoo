@@ -1,0 +1,4 @@
+expert: spec-reviewer
+phase: architecture
+blocking: false
+notes: Error code contract table complete. Systray flow correct. Solar_ai removal sequence ordered correctly.

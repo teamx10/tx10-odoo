@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_tx10_ai_chat_list" model="ir.ui.view">
+        <field name="name">tx10.ai.chat.list</field>
+        <field name="model">tx10.ai.chat</field>
+        <field name="arch" type="xml">
+            <list><field name="name"/><field name="user_id"/><field name="last_activity"/><field name="budget_state"/></list>
+        </field>
+    </record>
+    <record id="action_tx10_ai_chat" model="ir.actions.act_window">
+        <field name="name">AI Conversations</field>
+        <field name="res_model">tx10.ai.chat</field>
+        <field name="view_mode">list,form</field>
+    </record>
+</odoo>

@@ -1,0 +1,4 @@
+expert: spec-reviewer
+phase: docs-plan
+blocking: false
+notes: i18n/uk.po creation noted. Implementation log path matches CLAUDE.md policy. No stale references.
