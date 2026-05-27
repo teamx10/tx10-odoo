@@ -31,13 +31,32 @@
         <field name="context">{'default_project_id': active_id}</field>
     </record>
 
-    <!-- Action to view project documents (grouped by type = "folder" UX) -->
+    <!-- Search view: groupby document type = the "folder" UX (replaces folder tree) -->
+    <record id="view_solar_document_search_tx10" model="ir.ui.view">
+        <field name="name">solar.document.search.tx10</field>
+        <field name="model">solar.document</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name"/>
+                <field name="document_type_id"/>
+                <filter name="needs_review" string="Потребує перевірки"
+                        domain="[('needs_review', '=', True)]"/>
+                <group>
+                    <filter name="group_by_type" string="Тип документа"
+                            context="{'group_by': 'document_type_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action to view project documents (default-grouped by type = "folder" UX) -->
     <record id="action_solar_document_by_project" model="ir.actions.act_window">
         <field name="name">Документи</field>
         <field name="res_model">solar.document</field>
         <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_solar_document_search_tx10"/>
         <field name="domain">[('project_id', '=', active_id)]</field>
-        <field name="context">{'default_project_id': active_id}</field>
+        <field name="context">{'default_project_id': active_id, 'search_default_group_by_type': 1}</field>
     </record>
 
     <!-- Upload button on project.project form -->
