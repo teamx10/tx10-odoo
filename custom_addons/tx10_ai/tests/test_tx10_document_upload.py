@@ -11,12 +11,10 @@ class TestTx10DocumentUpload(TransactionCase):
     def setUpClass(cls):
         super().setUpClass()
         cls.project = cls.env["project.project"].create({"name": "Upload Test Project"})
-        cls.unknown_type = cls.env["solar.document.type"].search(
-            [("code", "=", "unknown")], limit=1,
-        )
-        cls.bill_type = cls.env["solar.document.type"].search(
-            [("code", "=", "bill_electricity")], limit=1,
-        )
+        # Use env.ref — fails loudly if the seed data is missing, instead of
+        # returning an empty recordset that makes downstream assertions vacuous.
+        cls.unknown_type = cls.env.ref("tx10_ai.solar_dtype_unknown")
+        cls.bill_type = cls.env.ref("solar_project.solar_dtype_bill_electricity")
 
     def _make_attachment(self, name, content=b"test content"):
         return self.env["ir.attachment"].create({
@@ -91,9 +89,44 @@ class TestTx10DocumentUpload(TransactionCase):
 
         doc.invalidate_recordset()
         self.assertTrue(doc.ai_classified)
-        if self.bill_type:
-            self.assertEqual(doc.document_type_id, self.bill_type)
+        self.assertEqual(doc.document_type_id, self.bill_type)
         self.assertFalse(doc.needs_review)
+
+    def test_cron_confidence_exactly_at_threshold_classifies(self):
+        # Boundary: 0.70 must pass (>= threshold), not fall into needs_review.
+        doc = self._create_pending_doc("boundary.xlsx")
+        boundary_result = {
+            "document_type_code": "bill_electricity",
+            "confidence": 0.70,
+            "reasons": ["exactly at threshold"],
+        }
+        with patch.object(
+            type(self.env["tx10.ai.service"]), "classify_document_text",
+            return_value=boundary_result,
+        ):
+            self.env["solar.document"]._cron_classify_pending_documents()
+
+        doc.invalidate_recordset()
+        self.assertEqual(doc.document_type_id, self.bill_type)
+        self.assertFalse(doc.needs_review, "confidence == 0.70 must classify, not flag for review")
+
+    def test_cron_confidence_just_below_threshold_needs_review(self):
+        # Boundary: 0.69 must fall into needs_review.
+        doc = self._create_pending_doc("below.xlsx")
+        below_result = {
+            "document_type_code": "bill_electricity",
+            "confidence": 0.69,
+            "reasons": ["just below threshold"],
+        }
+        with patch.object(
+            type(self.env["tx10.ai.service"]), "classify_document_text",
+            return_value=below_result,
+        ):
+            self.env["solar.document"]._cron_classify_pending_documents()
+
+        doc.invalidate_recordset()
+        self.assertTrue(doc.needs_review, "confidence == 0.69 must flag for review")
+        self.assertEqual(doc.document_type_id, self.unknown_type)
 
     def test_cron_low_confidence_sets_needs_review(self):
         doc = self._create_pending_doc("mystery.pdf")
@@ -111,8 +144,7 @@ class TestTx10DocumentUpload(TransactionCase):
         doc.invalidate_recordset()
         self.assertTrue(doc.ai_classified)
         self.assertTrue(doc.needs_review)
-        if self.unknown_type:
-            self.assertEqual(doc.document_type_id, self.unknown_type)
+        self.assertEqual(doc.document_type_id, self.unknown_type)
 
     def test_cron_llm_error_sets_needs_review(self):
         doc = self._create_pending_doc("error_case.pdf")
@@ -187,3 +219,66 @@ class TestTx10DocumentUpload(TransactionCase):
         })
         self.assertFalse(doc.document_type_id, "Pending doc must have no type (required=False)")
         self.assertEqual(doc.state, "draft")
+
+
+@tagged("post_install", "-at_install")
+class TestTx10ClassifyDocumentText(TransactionCase):
+    """Unit coverage for tx10.ai.service.classify_document_text parsing sub-paths."""
+
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls.service = cls.env["tx10.ai.service"]
+        cls.types = cls.env["solar.document.type"].search([("active", "=", True)])
+
+    def _classify_with_content(self, content, error=None):
+        chat_return = {"content": content, "usage": {}}
+        if error:
+            chat_return["error"] = error
+        with patch.object(type(self.service), "chat", return_value=chat_return):
+            return self.service.classify_document_text("some text", "doc.pdf", types=self.types)
+
+    def test_valid_json_parsed(self):
+        result = self._classify_with_content(
+            '{"document_type_code": "bill_electricity", "confidence": 0.9, "reasons": ["x"]}',
+        )
+        self.assertEqual(result["document_type_code"], "bill_electricity")
+        self.assertEqual(result["confidence"], 0.9)
+
+    def test_json_with_json_fence_stripped(self):
+        result = self._classify_with_content(
+            '```json\n{"document_type_code": "permit", "confidence": 0.8, "reasons": []}\n```',
+        )
+        self.assertEqual(result["document_type_code"], "permit")
+        self.assertEqual(result["confidence"], 0.8)
+
+    def test_json_with_plain_fence_stripped(self):
+        result = self._classify_with_content(
+            '```\n{"document_type_code": "permit", "confidence": 0.75, "reasons": []}\n```',
+        )
+        self.assertEqual(result["document_type_code"], "permit")
+
+    def test_malformed_json_returns_unknown(self):
+        result = self._classify_with_content("this is not json at all")
+        self.assertEqual(result["document_type_code"], "unknown")
+        self.assertEqual(result["confidence"], 0.0)
+        self.assertIn("parse_error", result["reasons"])
+
+    def test_missing_confidence_returns_unknown(self):
+        result = self._classify_with_content('{"document_type_code": "permit"}')
+        self.assertEqual(result["document_type_code"], "unknown")
+        self.assertEqual(result["confidence"], 0.0)
+
+    def test_chat_error_returns_unknown(self):
+        result = self._classify_with_content("", error="no_api_key")
+        self.assertEqual(result["document_type_code"], "unknown")
+        self.assertEqual(result["confidence"], 0.0)
+        self.assertIn("no_api_key", result["reasons"])
+
+    def test_string_confidence_rejected(self):
+        # Non-numeric confidence must be treated as a parse failure, not trusted.
+        result = self._classify_with_content(
+            '{"document_type_code": "permit", "confidence": "high", "reasons": []}',
+        )
+        self.assertEqual(result["document_type_code"], "unknown")
+        self.assertEqual(result["confidence"], 0.0)

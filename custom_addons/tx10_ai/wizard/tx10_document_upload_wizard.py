@@ -1,4 +1,8 @@
+import logging
+
 from odoo import _, fields, models
+
+_logger = logging.getLogger(__name__)
 
 
 class Tx10DocumentUploadWizard(models.TransientModel):
@@ -15,21 +19,31 @@ class Tx10DocumentUploadWizard(models.TransientModel):
     def action_upload(self):
         SolarDoc = self.env["solar.document"]
         for attachment in self.attachment_ids:
-            existing = SolarDoc.search(
-                [
-                    ("project_id", "=", self.project_id.id),
-                    ("attachment_id.name", "=", attachment.name),
-                    ("attachment_id.file_size", "=", attachment.file_size),
-                ],
-                limit=1,
-            )
-            if not existing:
-                SolarDoc.create({
-                    "name": attachment.name,
-                    "project_id": self.project_id.id,
-                    "attachment_id": attachment.id,
-                    "ai_classified": False,
-                })
+            # Isolate each attachment in its own savepoint so one bad file
+            # (constraint violation, etc.) does not roll back the whole batch.
+            try:
+                with self.env.cr.savepoint():
+                    existing = SolarDoc.search(
+                        [
+                            ("project_id", "=", self.project_id.id),
+                            ("attachment_id.name", "=", attachment.name),
+                            ("attachment_id.file_size", "=", attachment.file_size),
+                        ],
+                        limit=1,
+                    )
+                    if not existing:
+                        SolarDoc.create({
+                            "name": attachment.name,
+                            "project_id": self.project_id.id,
+                            "attachment_id": attachment.id,
+                            "ai_classified": False,
+                        })
+            except Exception:
+                _logger.exception(
+                    "tx10_ai: failed to upload attachment %s (%s)",
+                    attachment.id,
+                    attachment.name,
+                )
         return {
             "type": "ir.actions.act_window",
             "name": _("Documents"),

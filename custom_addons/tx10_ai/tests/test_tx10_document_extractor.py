@@ -36,13 +36,13 @@ class TestTx10DocumentExtractor(unittest.TestCase):
         self.assertEqual(extract_text("archive.7z", b"binary data"), "")
 
     def test_zip_bomb_guard(self):
+        # 51 MB of highly compressible data: the on-disk zip is tiny (~KB) but the
+        # member decompresses past the 50 MB cap. extract_text must reject it
+        # gracefully (empty string) rather than blow up worker memory or raise.
         buf = io.BytesIO()
         with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
-            info = zipfile.ZipInfo("word/document.xml")
-            info.file_size = 60 * 1024 * 1024  # 60 MB > 50 MB limit (zip bomb simulation)
-            zf.writestr(info, b"<w:document/>")
+            zf.writestr("word/document.xml", b"x" * (51 * 1024 * 1024))
         buf.seek(0)
-        # Must not raise — graceful empty return
         result = extract_text("fake.docx", buf.read())
         self.assertEqual(result, "")
 

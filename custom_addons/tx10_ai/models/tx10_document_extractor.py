@@ -48,10 +48,17 @@ def _decode_text(content_bytes: bytes) -> str:
 
 
 def _safe_zip_read(z: zipfile.ZipFile, member_name: str) -> bytes:
+    # Never trust the declared file_size in the zip header — a crafted member can
+    # declare a tiny size but carry a huge deflate stream. Stream the decompressed
+    # bytes with a hard cap so worker memory stays bounded regardless of the header.
     info = z.getinfo(member_name)
     if info.file_size > _MAX_ZIP_MEMBER_BYTES:
-        raise ValueError(f"Member {member_name!r} uncompressed size exceeds limit")
-    return z.read(member_name)
+        raise ValueError(f"Member {member_name!r} declared size exceeds limit")
+    with z.open(member_name) as fh:
+        data = fh.read(_MAX_ZIP_MEMBER_BYTES + 1)
+    if len(data) > _MAX_ZIP_MEMBER_BYTES:
+        raise ValueError(f"Member {member_name!r} decompressed size exceeds limit")
+    return data
 
 
 def _extract_pdf(content_bytes: bytes) -> str:
