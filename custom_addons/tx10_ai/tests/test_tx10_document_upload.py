@@ -1,6 +1,7 @@
 import base64
 from unittest.mock import patch
 
+from odoo.exceptions import ValidationError
 from odoo.tests import TransactionCase, tagged
 
 
@@ -62,6 +63,37 @@ class TestTx10DocumentUpload(TransactionCase):
         action = wizard.action_upload()
         self.assertEqual(action["res_model"], "solar.document")
         self.assertEqual(action["type"], "ir.actions.act_window")
+
+    def test_wizard_isolates_per_attachment_failure(self):
+        # One failing create must not roll back the others (savepoint isolation).
+        att_good = self._make_attachment("good_upload.pdf", b"a")
+        att_bad = self._make_attachment("bad_upload.pdf", b"b")
+        wizard = self._open_wizard([att_good.id, att_bad.id])
+        SolarDoc = self.env["solar.document"]
+        real_create = SolarDoc.create
+
+        def selective_create(vals):
+            if vals.get("name") == "bad_upload.pdf":
+                raise ValidationError("simulated create failure")  # noqa: EM101, TRY003
+            return real_create(vals)
+
+        with patch.object(type(SolarDoc), "create", side_effect=selective_create):
+            wizard.action_upload()
+
+        self.assertTrue(
+            SolarDoc.search([
+                ("project_id", "=", self.project.id),
+                ("name", "=", "good_upload.pdf"),
+            ]),
+            "Good attachment must land despite a peer failing",
+        )
+        self.assertFalse(
+            SolarDoc.search([
+                ("project_id", "=", self.project.id),
+                ("name", "=", "bad_upload.pdf"),
+            ]),
+            "Failed attachment must be rolled back, not partially persisted",
+        )
 
     # --- Cron classification ---
 

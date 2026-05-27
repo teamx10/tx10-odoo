@@ -1,14 +1,19 @@
 import io
-import unittest
 import zipfile
+from unittest.mock import MagicMock
+
+from odoo.tests import TransactionCase, tagged
 
 from odoo.addons.tx10_ai.models.tx10_document_extractor import (
+    _MAX_ZIP_MEMBER_BYTES,
     PHOTO_EXTENSIONS,
+    _safe_zip_read,
     extract_text,
 )
 
 
-class TestTx10DocumentExtractor(unittest.TestCase):
+@tagged("post_install", "-at_install")
+class TestTx10DocumentExtractor(TransactionCase):
 
     def test_photo_jpg_returns_empty(self):
         self.assertEqual(extract_text("photo.jpg", b"fake bytes"), "")
@@ -48,3 +53,28 @@ class TestTx10DocumentExtractor(unittest.TestCase):
 
     def test_extract_text_empty_bytes(self):
         self.assertEqual(extract_text("doc.txt", b""), "")
+
+    def test_safe_zip_read_header_check_rejects_large_declared_size(self):
+        # First guard: an honest header declaring > cap is rejected before any read.
+        z = MagicMock(spec=zipfile.ZipFile)
+        info = MagicMock()
+        info.file_size = _MAX_ZIP_MEMBER_BYTES + 1
+        z.getinfo.return_value = info
+        with self.assertRaises(ValueError):
+            _safe_zip_read(z, "word/document.xml")
+        z.open.assert_not_called()
+
+    def test_safe_zip_read_streaming_cap_rejects_lying_header(self):
+        # Defense-in-depth: header lies small (passes line-55 check) but the
+        # decompressed stream exceeds the cap. The capped read must catch it.
+        z = MagicMock(spec=zipfile.ZipFile)
+        info = MagicMock()
+        info.file_size = 10  # lie — passes the header check
+        z.getinfo.return_value = info
+        fake_fh = MagicMock()
+        fake_fh.read.return_value = b"x" * (_MAX_ZIP_MEMBER_BYTES + 1)
+        z.open.return_value.__enter__.return_value = fake_fh
+        with self.assertRaises(ValueError):
+            _safe_zip_read(z, "word/document.xml")
+        # Confirms the read was capped, not unbounded.
+        fake_fh.read.assert_called_once_with(_MAX_ZIP_MEMBER_BYTES + 1)
