@@ -5,3 +5,21 @@ persona_map: "projects/tx2/config/persona-map.yml"
 consensus_gate_script: "$HOME/.claude/scripts/tx2/consensus-gate.sh"
 max_repair_iterations: 3
 max_review_iterations: 2
+
+# AI reviewer configuration (D10)
+# Valid values: claude, copilot
+# claude: requires Claude GitHub App installed on the repo
+# copilot: requires GitHub Copilot enabled for the org
+ai_reviewers:
+  - claude
+  - copilot
+
+# Test command configuration (D-SMOKE-1)
+# test_smoke: runs at Stage 1 (before human handoff) — quick sanity check
+# test_e2e:   runs at Stage 3 (before merge) — full integration suite
+# Leave a value empty ("") to skip that test stage entirely
+commands:
+  # Odoo functional tests require a running DB (./odoo-bin --test-enable)
+  # smoke = fast static check only; e2e = opt-out (manual via odoo-bin)
+  test_smoke: "ruff check custom_addons/tx10_ai/models/tx10_document_extractor.py custom_addons/tx10_ai/models/solar_document.py custom_addons/tx10_ai/models/tx10_ai_service.py custom_addons/tx10_ai/wizard/tx10_document_upload_wizard.py custom_addons/tx10_ai/tests/test_tx10_document_extractor.py custom_addons/tx10_ai/tests/test_tx10_document_upload.py"
+  test_e2e: ""

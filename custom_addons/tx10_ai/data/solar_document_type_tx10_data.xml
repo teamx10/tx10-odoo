@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- Fallback type for documents that could not be classified by AI -->
+    <record id="solar_dtype_unknown" model="solar.document.type">
+        <field name="name">Нерозпізнане</field>
+        <field name="code">unknown</field>
+        <field name="sequence">999</field>
+        <field name="description">Document type could not be determined — requires manual review</field>
+    </record>
+</odoo>

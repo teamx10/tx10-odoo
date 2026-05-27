@@ -3,7 +3,4 @@ access_tx10_ai_chat_manager,tx10.ai.chat manager,model_tx10_ai_chat,project.grou
 access_tx10_ai_message_manager,tx10.ai.message manager,model_tx10_ai_message,project.group_project_manager,1,1,1,1
 access_tx10_ai_chat_user,tx10.ai.chat user,model_tx10_ai_chat,project.group_project_user,1,1,1,0
 access_tx10_ai_message_user,tx10.ai.message user,model_tx10_ai_message,project.group_project_user,1,1,1,0
-access_tx10_document_folder_user,tx10.document.folder user,model_tx10_document_folder,project.group_project_user,1,0,0,0
-access_tx10_document_folder_manager,tx10.document.folder manager,model_tx10_document_folder,project.group_project_manager,1,1,1,1
 access_tx10_document_upload_wizard_user,tx10.document.upload.wizard user,model_tx10_document_upload_wizard,project.group_project_user,1,1,1,1
-access_tx10_document_result_line_user,tx10.document.result.line user,model_tx10_document_result_line,project.group_project_user,1,1,1,1

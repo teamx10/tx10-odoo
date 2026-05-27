@@ -1,19 +1,19 @@
 {
     "name": "TeamX10 AI",
-    "version": "19.0.1.2.0",
-    "summary": "TeamX10 AI assistant as a native Discuss bot",
+    "version": "19.0.1.3.0",
+    "summary": "TeamX10 AI assistant as a native Discuss bot + document auto-classification",
     "category": "Project",
     "depends": ["mail", "project", "solar_project", "base_setup", "web"],
-    "external_dependencies": {"python": ["httpx"]},
+    "external_dependencies": {"python": ["httpx", "defusedxml"]},
     "data": [
         "security/ir.model.access.csv",
         "security/tx10_ai_security.xml",
         "data/config_params.xml",
         "data/tx10_ai_bot.xml",
+        "data/solar_document_type_tx10_data.xml",
         "data/ir_cron.xml",
         "views/res_config_settings_views.xml",
         "views/tx10_ai_chat_views.xml",
-        "views/tx10_document_folder_views.xml",
         "views/tx10_document_upload_wizard_views.xml",
     ],
     "assets": {

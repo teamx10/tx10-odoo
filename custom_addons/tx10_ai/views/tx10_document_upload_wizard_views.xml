@@ -1,50 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
-    <!-- Wizard form view -->
+    <!-- Wizard form view — upload only, classification happens via cron -->
     <record id="view_tx10_document_upload_wizard_form" model="ir.ui.view">
         <field name="name">tx10.document.upload.wizard.form</field>
         <field name="model">tx10.document.upload.wizard</field>
         <field name="arch" type="xml">
             <form string="Завантажити документи">
-                <field name="state" invisible="1"/>
                 <sheet>
-                    <!-- Upload step -->
-                    <group invisible="state != 'upload'">
+                    <group>
                         <field name="project_id"/>
                         <field name="attachment_ids" widget="many2many_binary" string="Файли"/>
                     </group>
-
-                    <!-- Done step — summary table -->
-                    <group invisible="state != 'done'">
-                        <field name="project_id" readonly="1"/>
-                    </group>
-                    <field name="result_line_ids" invisible="state != 'done'">
-                        <list decoration-warning="status == 'needs_review'"
-                              decoration-danger="status == 'error'"
-                              decoration-muted="status == 'skipped'">
-                            <field name="filename"/>
-                            <field name="folder_id"/>
-                            <field name="confidence" string="Confidence" widget="float"/>
-                            <field name="status"/>
-                            <field name="message"/>
-                        </list>
-                    </field>
-                    <div class="alert alert-warning" role="alert"
-                         invisible="state != 'done' or not has_needs_review">
-                        Деякі файли потребують ручної перевірки
-                    </div>
                 </sheet>
                 <footer>
-                    <button string="Класифікувати" type="object" name="action_classify_and_file"
-                            class="btn-primary" invisible="state != 'upload'"/>
+                    <button string="Завантажити" type="object" name="action_upload"
+                            class="btn-primary"/>
                     <button string="Закрити" class="btn-secondary" special="cancel"/>
                 </footer>
             </form>
         </field>
     </record>
 
-    <!-- Action to open wizard -->
+    <!-- Action to open upload wizard -->
     <record id="action_tx10_document_upload_wizard" model="ir.actions.act_window">
         <field name="name">Завантажити документи</field>
         <field name="res_model">tx10.document.upload.wizard</field>
@@ -53,7 +31,16 @@
         <field name="context">{'default_project_id': active_id}</field>
     </record>
 
-    <!-- Button on project.project form -->
+    <!-- Action to view project documents (grouped by type = "folder" UX) -->
+    <record id="action_solar_document_by_project" model="ir.actions.act_window">
+        <field name="name">Документи</field>
+        <field name="res_model">solar.document</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('project_id', '=', active_id)]</field>
+        <field name="context">{'default_project_id': active_id}</field>
+    </record>
+
+    <!-- Upload button on project.project form -->
     <record id="view_project_project_tx10_upload_button" model="ir.ui.view">
         <field name="name">project.project.tx10.upload.button</field>
         <field name="model">project.project</field>
@@ -64,21 +51,39 @@
                         name="%(tx10_ai.action_tx10_document_upload_wizard)d"
                         icon="fa-upload">
                     <div class="o_stat_info">
-                        <span class="o_stat_text">Загрузити документи</span>
+                        <span class="o_stat_text">Завантажити документи</span>
                     </div>
                 </button>
             </xpath>
         </field>
     </record>
 
-    <!-- Inherit solar.document list to add folder column -->
-    <record id="view_solar_document_list_tx10_folder" model="ir.ui.view">
-        <field name="name">solar.document.list.tx10.folder</field>
+    <!-- Documents smart button on project.project form -->
+    <record id="view_project_project_tx10_documents_button" model="ir.ui.view">
+        <field name="name">project.project.tx10.documents.button</field>
+        <field name="model">project.project</field>
+        <field name="inherit_id" ref="project.edit_project"/>
+        <field name="arch" type="xml">
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button class="oe_stat_button" type="action"
+                        name="%(tx10_ai.action_solar_document_by_project)d"
+                        icon="fa-file-text-o">
+                    <div class="o_stat_info">
+                        <span class="o_stat_text">Документи</span>
+                    </div>
+                </button>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Inherit solar.document list to show needs_review badge -->
+    <record id="view_solar_document_list_tx10_review" model="ir.ui.view">
+        <field name="name">solar.document.list.tx10.review</field>
         <field name="model">solar.document</field>
         <field name="inherit_id" ref="solar_project.view_solar_document_list"/>
         <field name="arch" type="xml">
             <xpath expr="//field[@name='document_type_id']" position="after">
-                <field name="folder_id" optional="show"/>
+                <field name="needs_review" optional="show" string="Потребує перевірки"/>
             </xpath>
         </field>
     </record>

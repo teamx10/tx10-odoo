@@ -7,5 +7,4 @@ from . import (
     tx10_ai_chat,
     tx10_ai_message,
     tx10_ai_service,
-    tx10_document_folder,
 )
