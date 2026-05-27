@@ -87,3 +87,68 @@ Wizard-based document upload + deterministic keyword classifier that auto-files 
 ## PR
 
 https://github.com/teamx10/tx10-odoo/pull/4
+
+---
+
+# ITERATION 2 — Architecture pivot (LLM classification, no custom DMS)
+
+**Date:** 2026-05-27
+**Commits:** `77240327c20a` → `6de69604ae68` (6 commits)
+**Trigger:** User rejected re-implementing an absent Enterprise DMS. Replace keyword
+classifier + custom folder tree with LLM classification onto `solar.document.type`.
+
+## What changed
+
+| Removed | Added / Reworked |
+|---------|------------------|
+| `models/tx10_document_folder.py` (model + 24-node tree) | — (no custom DMS) |
+| `models/tx10_document_classifier.py` (keyword rules) | `models/tx10_document_extractor.py` (extractors only) |
+| `tx10.document.result.line` + sync wizard summary | upload-only wizard (`action_upload`, savepoint-isolated) |
+| `views/tx10_document_folder_views.xml` + "Папки" button | "Документи" button → `solar.document` list, **default group-by type** |
+| `folder_id` field on `solar.document` | `needs_review` field + list column + search filter |
+| keyword `classify()` | `tx10_ai_service.classify_document_text` → OpenRouter LLM (dynamic types) |
+| — | `solar_document._run_ai_classify` override + `_cron_classify_pending_documents` cron |
+| — | `data/solar_document_type_tx10_data.xml` (seeds `unknown`/Нерозпізнане) |
+| — | `data/ir_cron.xml` classify cron (1 min) |
+| — | `migrations/19.0.1.3.0/pre-migration.py` (unlinks PR #4 orphan views/actions) |
+
+## Key patterns established
+
+- **Async classify:** upload → pending `solar.document` (`ai_classified=False`) → cron picks
+  batch (limit 20) → per-record `_run_ai_classify` with try/except isolation.
+- **LLM seam:** `classify_document_text(text, filename, types)` — types passed as a
+  pre-fetched recordset (no N+1); admin manages categories via UI, zero code change (D4).
+- **Fallback:** confidence `< 0.70` / `unknown` / LLM error → type=Нерозпізнане +
+  `needs_review=True` + `mail.activity`.
+- **"Folders" = group-by:** native Odoo search-view groupby on `document_type_id`,
+  default-activated via `search_default_group_by_type`.
+
+## Deviations from iteration-1 plan
+
+1. **No `folder_id` / folder model** — design D1/D10 pivot. Removed from registry + DB
+   (verified: `folder_id` absent from `_fields` and the `solar_document` table column dropped).
+2. **defusedxml now a hard `external_dependency`** (was "optional MVP" in iter-1 risks) —
+   added to `requirements.txt` and manifest; stdlib fallback retained only for Py3.10+ safety.
+3. **Pre-migration required** — not in original plan. PR #4's install left orphaned
+   `ir.ui.view`/`ir.actions` referencing the dropped `folder_id`/model; they broke shared
+   view validation on `-u`. Pre-migration unlinks 5 xmlids before new views load.
+
+## Verification evidence (iteration 2)
+
+| Check | Result |
+|-------|--------|
+| `ruff check` (all reworked files) | ✅ pass |
+| `./odoo-bin -d isolar -u tx10_ai --test-enable --test-tags /tx10_ai` | ✅ **93 tests, 0 failed, 0 error** |
+| Module update `-u tx10_ai` | ✅ loads clean (migration removed orphans) |
+| `folder_id` removed | ✅ verified gone from registry + DB column |
+| IT-team consensus gate | iter1 = 5 MAJOR → iter2 fixes → **PASS (0/0/0)** |
+| Live UI smoke (fresh session) | ✅ both smart buttons, upload wizard, docs list grouped-by-type, `needs_review` column |
+
+Screenshots: `smoke-iter2-upload-wizard.png`, `smoke-iter2-docs-grouped.png`.
+
+## Notes for finalization
+
+- AI auto-review (`@claude`) **not posted**: repo has no Claude GitHub Action workflow
+  (`.github/workflows` absent) and the app-installation check returned 401 — would be a no-op.
+  Copilot auto-reviews on PR open if org-enabled.
+- Status: `review-pending`. Finalize via `/tx2:complete 2026-05-26-ai-document-foldering`.
