@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_solar_site_link_wizard_form" model="ir.ui.view">
+        <field name="name">solar.site.link.wizard.form</field>
+        <field name="model">solar.site.link.wizard</field>
+        <field name="arch" type="xml">
+            <form string="Link Existing Solar Site">
+                <sheet>
+                    <group>
+                        <field name="crm_lead_id" readonly="1"/>
+                        <field name="solar_site_id"/>
+                    </group>
+                </sheet>
+                <footer>
+                    <button name="action_link" string="Link" type="object" class="btn-primary"/>
+                    <button string="Cancel" class="btn-secondary" special="cancel"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="res_config_settings_view_solar_site" model="ir.ui.view">
+        <field name="name">res.config.settings.solar_site</field>
+        <field name="model">res.config.settings</field>
+        <field name="inherit_id" ref="project.res_config_settings_view_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//app[@name='project']" position="inside">
+                <block title="Solar Site Defaults" name="solar_site_defaults">
+                    <setting string="Default Qualification Engineer">
+                        <field name="solar_default_qualification_engineer_id"/>
+                    </setting>
+                    <setting string="Panel Wattage (Wp)">
+                        <field name="solar_default_panel_wattage"/>
+                    </setting>
+                    <setting string="Panel Area (m²)">
+                        <field name="solar_default_panel_area"/>
+                    </setting>
+                    <setting string="Area Utilisation (%)">
+                        <field name="solar_default_area_utilization"/>
+                    </setting>
+                    <setting string="Specific Yield (kWh/kWp)">
+                        <field name="solar_default_specific_yield"/>
+                    </setting>
+                    <setting string="Qualification Deadline (days)">
+                        <field name="solar_default_qualification_deadline"/>
+                    </setting>
+                    <setting string="Proposal Deadline (days)">
+                        <field name="solar_default_proposal_deadline"/>
+                    </setting>
+                </block>
+            </xpath>
+        </field>
+    </record>
+</odoo>

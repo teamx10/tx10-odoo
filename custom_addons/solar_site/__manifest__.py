@@ -1,0 +1,30 @@
+{
+    "name": "Solar Site",
+    "version": "19.0.1.0.0",
+    "summary": "iSolar presales — CRM Lead to Solar Site qualification",
+    "category": "Project",
+    "author": "tx10",
+    "license": "LGPL-3",
+    "depends": [
+        "crm",
+        "mail",
+        "base_geolocalize",
+        "contacts",
+    ],
+    "data": [
+        "security/ir.model.access.csv",
+        "data/crm_stage_data.xml",
+        "data/config_params.xml",
+        "views/solar_site_views.xml",
+        "views/solar_roof_plane_views.xml",
+        "views/crm_lead_views.xml",
+        "views/res_config_settings_views.xml",
+        "views/link_solar_site_views.xml",
+        "views/menus.xml",
+    ],
+    "demo": [
+        "demo/solar_site_demo.xml",
+    ],
+    "installable": True,
+    "application": False,
+}

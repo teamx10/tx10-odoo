@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- 8 CRM pipeline stages for Solar presales flow -->
+    <record id="crm_stage_new_lead" model="crm.stage">
+        <field name="name">New Lead</field>
+        <field name="sequence">1</field>
+    </record>
+    <record id="crm_stage_remote_assessment" model="crm.stage">
+        <field name="name">Remote Assessment</field>
+        <field name="sequence">2</field>
+    </record>
+    <record id="crm_stage_data_requested" model="crm.stage">
+        <field name="name">Data Requested</field>
+        <field name="sequence">3</field>
+    </record>
+    <record id="crm_stage_engineer_visit" model="crm.stage">
+        <field name="name">Engineer Visit Needed</field>
+        <field name="sequence">4</field>
+    </record>
+    <record id="crm_stage_site_qualified" model="crm.stage">
+        <field name="name">Site Qualified</field>
+        <field name="sequence">5</field>
+    </record>
+    <record id="crm_stage_ready_for_proposal" model="crm.stage">
+        <field name="name">Ready for Proposal</field>
+        <field name="sequence">6</field>
+    </record>
+    <record id="crm_stage_proposal_sent" model="crm.stage">
+        <field name="name">Proposal Sent</field>
+        <field name="sequence">7</field>
+    </record>
+    <record id="crm_stage_lost" model="crm.stage">
+        <field name="name">Lost / Rejected</field>
+        <field name="sequence">8</field>
+        <field name="is_won" eval="False"/>
+        <field name="fold">True</field>
+    </record>
+
+    <!-- Sequence for solar.site codes -->
+    <record id="seq_solar_site" model="ir.sequence">
+        <field name="name">Solar Site</field>
+        <field name="code">solar.site</field>
+        <field name="prefix">SS</field>
+        <field name="padding">5</field>
+        <field name="number_increment">1</field>
+        <field name="number_next">1</field>
+    </record>
+</odoo>
