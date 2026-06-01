@@ -1,0 +1,5 @@
+expert: spec-reviewer
+phase: security
+iteration: 2
+blocking: false
+notes: All three blocking issues resolved — ZipInfo.file_size checked before .read(), billion-laughs risk accurately stated with defusedxml recommendation, sudo() TOCTOU explained via ORM record-rule validation of Many2one before _ensure_tree call.

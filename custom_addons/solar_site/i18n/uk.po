@@ -1,0 +1,132 @@
+# Ukrainian translation for solar_site module
+# Copyright (C) 2026 tx10
+# This file is distributed under LGPL-3.
+msgid ""
+msgstr ""
+"Project-Id-Version: Odoo Server 19.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-05-31 00:00+0000\n"
+"PO-Revision-Date: 2026-05-31 00:00+0000\n"
+"Language-Team: Ukrainian\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: uk\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
+
+msgid "Solar Site"
+msgstr "Сонячний об'єкт"
+
+msgid "Solar Sites"
+msgstr "Сонячні об'єкти"
+
+msgid "Site Code"
+msgstr "Код об'єкта"
+
+msgid "Status"
+msgstr "Статус"
+
+msgid "New"
+msgstr "Новий"
+
+msgid "Remote Assessment"
+msgstr "Дистанційна оцінка"
+
+msgid "Data Requested"
+msgstr "Запит даних"
+
+msgid "Engineer Visit Needed"
+msgstr "Потрібен виїзд інженера"
+
+msgid "Qualified"
+msgstr "Кваліфіковано"
+
+msgid "Rejected"
+msgstr "Відхилено"
+
+msgid "Site Owner"
+msgstr "Власник об'єкта"
+
+msgid "Contact Person"
+msgstr "Контактна особа"
+
+msgid "Responsible Manager"
+msgstr "Відповідальний менеджер"
+
+msgid "Responsible Engineer"
+msgstr "Відповідальний інженер"
+
+msgid "Qualify Site"
+msgstr "Кваліфікувати об'єкт"
+
+msgid "Request Data"
+msgstr "Запросити дані"
+
+msgid "Reject Site"
+msgstr "Відхилити об'єкт"
+
+msgid "Recalculate Potential"
+msgstr "Перерахувати потенціал"
+
+msgid "Ready for Preliminary Proposal"
+msgstr "Готовий до попередньої пропозиції"
+
+msgid "Site Suitability"
+msgstr "Придатність об'єкта"
+
+msgid "Excellent"
+msgstr "Відмінна"
+
+msgid "Good"
+msgstr "Хороша"
+
+msgid "Moderate"
+msgstr "Задовільна"
+
+msgid "Poor"
+msgstr "Погана"
+
+msgid "Unsuitable"
+msgstr "Непридатний"
+
+msgid "Proceed to Proposal"
+msgstr "Перейти до пропозиції"
+
+msgid "Schedule Engineer Visit"
+msgstr "Запланувати виїзд інженера"
+
+msgid "Request More Data"
+msgstr "Запросити більше даних"
+
+msgid "Put on Hold"
+msgstr "Призупинити"
+
+msgid "Total Roof Area (m²)"
+msgstr "Загальна площа даху (м²)"
+
+msgid "Total Usable Area (m²)"
+msgstr "Корисна площа (м²)"
+
+msgid "Overall Shading Risk"
+msgstr "Загальний ризик затінення"
+
+msgid "Estimated Panel Count"
+msgstr "Орієнтовна кількість панелей"
+
+msgid "Estimated DC Capacity (kWp)"
+msgstr "Орієнтована потужність DC (кВп)"
+
+msgid "Est. Annual Generation (kWh)"
+msgstr "Орієнт. річна генерація (кВт·год)"
+
+msgid "New Lead"
+msgstr "Новий лід"
+
+msgid "Ready for Proposal"
+msgstr "Готовий до пропозиції"
+
+msgid "Proposal Sent"
+msgstr "Пропозицію надіслано"
+
+msgid "Lost / Rejected"
+msgstr "Втрачено / Відхилено"

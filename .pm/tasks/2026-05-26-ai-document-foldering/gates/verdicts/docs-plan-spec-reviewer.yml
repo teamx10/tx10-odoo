@@ -1,0 +1,4 @@
+expert: spec-reviewer
+phase: docs-plan
+blocking: false
+notes: uk.po entry msgid "Files" lacks msgctxt and may collide with Odoo core translation — use "Upload Files" or add msgctxt; rest of template complete and comment specs are appropriately minimal.

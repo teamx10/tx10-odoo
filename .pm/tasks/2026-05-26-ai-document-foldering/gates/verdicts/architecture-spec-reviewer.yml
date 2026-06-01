@@ -1,0 +1,4 @@
+expert: spec-reviewer
+phase: architecture
+blocking: false
+notes: 24-node count verified, classify-filer seam contract matches solar_document._run_ai_classify, ondelete policies correct; tx10_document_result_line.py missing from T2 build sequence but present in component map — not blocking.

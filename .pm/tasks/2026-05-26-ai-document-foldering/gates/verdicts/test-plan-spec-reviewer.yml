@@ -1,0 +1,4 @@
+expert: spec-reviewer
+phase: test-plan
+blocking: false
+notes: All categories, confidence formula, idempotency, 4 file types, duplicate detection, and regression for document_type_id=False all covered; mock strategy appropriate; minor — unit test uses unittest.TestCase base with @tagged, which works in Odoo 19 runner but worth a comment.

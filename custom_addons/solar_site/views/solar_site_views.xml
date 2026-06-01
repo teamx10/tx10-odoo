@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Form view -->
+    <record id="view_solar_site_form" model="ir.ui.view">
+        <field name="name">solar.site.form</field>
+        <field name="model">solar.site</field>
+        <field name="arch" type="xml">
+            <form string="Solar Site">
+                <header>
+                    <button name="action_qualify_site" string="Qualify Site"
+                            type="object" class="btn-primary"
+                            invisible="solar_status in ('qualified','rejected')"/>
+                    <button name="action_request_more_data" string="Request Data"
+                            type="object"
+                            invisible="solar_status in ('data_requested','qualified','rejected')"/>
+                    <button name="action_engineer_visit_needed" string="Engineer Visit Needed"
+                            type="object"
+                            invisible="solar_status in ('engineer_visit','qualified','rejected')"/>
+                    <button name="action_reject_site" string="Reject Site"
+                            type="object" class="btn-danger"
+                            invisible="solar_status == 'rejected'"/>
+                    <field name="solar_status" widget="statusbar"
+                           statusbar_visible="new,remote_assessment,qualified,rejected"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button type="object" name="action_view_crm_leads"
+                                class="oe_stat_button" icon="fa-handshake-o"
+                                invisible="crm_lead_count == 0">
+                            <field name="crm_lead_count" widget="statinfo" string="Leads"/>
+                        </button>
+                    </div>
+                    <div class="oe_title">
+                        <h1>
+                            <field name="solar_code" readonly="1"/>
+                        </h1>
+                    </div>
+                    <group>
+                        <group string="Identification">
+                            <field name="owner_partner_id"/>
+                            <field name="contact_person_id"/>
+                            <field name="responsible_manager_id"/>
+                            <field name="responsible_engineer_id"/>
+                            <field name="priority" widget="priority"/>
+                        </group>
+                        <group string="Site Address">
+                            <field name="street"/>
+                            <field name="city"/>
+                            <field name="zip"/>
+                            <field name="state_id"/>
+                            <field name="country_id"/>
+                            <div class="o_row" name="geo_buttons">
+                                <button name="action_geolocalize" string="Geolocalize"
+                                        type="object" class="btn-secondary"/>
+                                <button name="action_open_google_maps" string="Open Google Maps"
+                                        type="object" class="btn-secondary"
+                                        invisible="not google_maps_url"/>
+                                <button name="action_open_satellite" string="Open Satellite View"
+                                        type="object" class="btn-secondary"
+                                        invisible="not google_satellite_url"/>
+                            </div>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Coordinates">
+                            <field name="latitude"/>
+                            <field name="longitude"/>
+                        </group>
+                    </group>
+
+                    <notebook>
+                        <page string="Roof Planes" name="roof_planes">
+                            <field name="roof_plane_ids" widget="one2many_list">
+                                <list editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="name"/>
+                                    <field name="total_area_m2"/>
+                                    <field name="usable_area_m2"/>
+                                    <field name="orientation"/>
+                                    <field name="pitch_degrees"/>
+                                    <field name="shading_risk"/>
+                                    <field name="notes"/>
+                                </list>
+                            </field>
+                            <group>
+                                <group string="Totals">
+                                    <field name="estimated_total_roof_area_m2" readonly="1"/>
+                                    <field name="estimated_total_usable_area_m2" readonly="1"/>
+                                    <field name="overall_shading_risk" readonly="1"/>
+                                </group>
+                            </group>
+                        </page>
+
+                        <page string="System Potential" name="potential">
+                            <group>
+                                <group string="Parameters">
+                                    <field name="panel_wattage_wp"/>
+                                    <field name="panel_area_m2"/>
+                                    <field name="area_utilization_pct"/>
+                                    <field name="specific_yield_kwh_kwp"/>
+                                </group>
+                                <group string="Estimates">
+                                    <field name="estimated_panel_count" readonly="1"/>
+                                    <field name="estimated_dc_kw" readonly="1"/>
+                                    <field name="estimated_annual_generation_kwh" readonly="1"/>
+                                </group>
+                            </group>
+                            <button name="action_recalculate_potential"
+                                    string="Recalculate Potential"
+                                    type="object" class="btn-secondary"/>
+                        </page>
+
+                        <page string="Remote Assessment" name="remote_assessment">
+                            <group>
+                                <field name="remote_assessment_notes" nolabel="1"/>
+                                <field name="satellite_image_url"/>
+                                <field name="street_view_url"/>
+                            </group>
+                        </page>
+
+                        <page string="Qualification" name="qualification">
+                            <group>
+                                <group>
+                                    <field name="site_suitability"/>
+                                    <field name="recommended_next_step"/>
+                                    <field name="ready_for_preliminary_proposal" widget="boolean_toggle"/>
+                                </group>
+                            </group>
+                            <field name="qualification_notes" nolabel="1"
+                                   placeholder="Qualification notes..."/>
+                        </page>
+                    </notebook>
+                </sheet>
+                <chatter/>
+            </form>
+        </field>
+    </record>
+
+    <!-- List view -->
+    <record id="view_solar_site_list" model="ir.ui.view">
+        <field name="name">solar.site.list</field>
+        <field name="model">solar.site</field>
+        <field name="arch" type="xml">
+            <list string="Solar Sites">
+                <field name="solar_code"/>
+                <field name="owner_partner_id"/>
+                <field name="city"/>
+                <field name="solar_status" widget="badge"
+                       decoration-success="solar_status == 'qualified'"
+                       decoration-danger="solar_status == 'rejected'"
+                       decoration-warning="solar_status in ('data_requested','engineer_visit')"/>
+                <field name="estimated_dc_kw"/>
+                <field name="ready_for_preliminary_proposal" widget="boolean"/>
+                <field name="responsible_engineer_id"/>
+                <field name="crm_lead_count"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- Search view -->
+    <record id="view_solar_site_search" model="ir.ui.view">
+        <field name="name">solar.site.search</field>
+        <field name="model">solar.site</field>
+        <field name="arch" type="xml">
+            <search string="Solar Sites">
+                <field name="solar_code"/>
+                <field name="owner_partner_id"/>
+                <field name="city"/>
+                <field name="responsible_engineer_id"/>
+                <filter string="New" name="filter_new" domain="[('solar_status','=','new')]"/>
+                <filter string="Remote Assessment" name="filter_remote"
+                        domain="[('solar_status','=','remote_assessment')]"/>
+                <filter string="Qualified" name="filter_qualified"
+                        domain="[('solar_status','=','qualified')]"/>
+                <filter string="Ready for Proposal" name="filter_ready"
+                        domain="[('ready_for_preliminary_proposal','=',True)]"/>
+                <filter string="Rejected" name="filter_rejected"
+                        domain="[('solar_status','=','rejected')]"/>
+                <separator/>
+                <group colspan="16">
+                    <filter string="Status" name="group_status" context="{'group_by': 'solar_status'}"/>
+                    <filter string="Engineer" name="group_engineer"
+                            context="{'group_by': 'responsible_engineer_id'}"/>
+                    <filter string="City" name="group_city" context="{'group_by': 'city'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- Action -->
+    <record id="action_solar_site" model="ir.actions.act_window">
+        <field name="name">Solar Sites</field>
+        <field name="res_model">solar.site</field>
+        <field name="view_mode">list,form</field>
+        <field name="search_view_id" ref="view_solar_site_search"/>
+    </record>
+
+    <!-- Action for CRM leads smart button -->
+    <record id="action_solar_site_crm_leads" model="ir.actions.act_window">
+        <field name="name">CRM Leads</field>
+        <field name="res_model">crm.lead</field>
+        <field name="view_mode">list,form</field>
+        <field name="domain">[('solar_site_id', '=', active_id)]</field>
+        <field name="context">{'default_solar_site_id': active_id}</field>
+    </record>
+</odoo>

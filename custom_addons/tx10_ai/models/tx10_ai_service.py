@@ -230,3 +230,55 @@ class Tx10AiService(models.AbstractModel):
             result["error"] = f"terminated_{finish_reason}"
             result["error_code"] = f"terminated_{finish_reason}"
         return result
+
+    def classify_document_text(self, text, filename="", types=None):
+        """Classify a document using LLM. Returns {document_type_code, confidence, reasons}."""
+        if types is None:
+            types = self.env["solar.document.type"].sudo().search([("active", "=", True)])
+
+        type_lines = "\n".join(
+            f'- code="{t.code}" | {t.name}{(": " + t.description) if t.description else ""}'
+            for t in types
+        )
+
+        system_msg = (
+            "You are a document classification assistant for a solar energy company. "
+            "Classify the given document into exactly one of the available types. "
+            'Respond ONLY with valid JSON: {"document_type_code": "...", "confidence": 0.0-1.0, "reasons": ["..."]}. '
+            'Use document_type_code="unknown" if you are unsure or confidence is below 0.70.'
+        )
+        user_msg = (
+            f"Available document types:\n{type_lines}\n\n"
+            f"Filename: {filename or '(unknown)'}\n"
+            f"Text excerpt:\n{text[:3000] if text else '(no extractable text)'}\n\n"
+            "Classify this document."
+        )
+
+        response = self.chat(
+            messages=[
+                {"role": "system", "content": system_msg},
+                {"role": "user", "content": user_msg},
+            ],
+            timeout=30,
+        )
+
+        if response.get("error"):
+            _logger.warning("tx10_ai: classify_document_text LLM error: %s", response["error"])
+            return {"document_type_code": "unknown", "confidence": 0.0, "reasons": [response.get("error", "llm_error")]}
+
+        content = response.get("content", "")
+        # Strip markdown code fences if present
+        if "```" in content:
+            parts = content.split("```")
+            content = parts[1] if len(parts) > 1 else content
+            if content.startswith("json"):
+                content = content[4:]
+
+        try:
+            parsed = json.loads(content.strip())
+            if not isinstance(parsed.get("confidence"), (int, float)):
+                raise TypeError  # noqa: TRY301
+            return parsed
+        except (TypeError, json.JSONDecodeError):
+            _logger.warning("tx10_ai: classify_document_text parse error, raw: %s", content[:300])
+            return {"document_type_code": "unknown", "confidence": 0.0, "reasons": ["parse_error"]}

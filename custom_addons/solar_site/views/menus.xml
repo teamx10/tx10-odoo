@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Top-level Solar Sites menu -->
+    <menuitem id="menu_solar_site_root"
+              name="Solar Sites"
+              sequence="85"
+              web_icon="solar_site,static/description/icon.png"/>
+
+    <menuitem id="menu_solar_site_list"
+              name="All Sites"
+              parent="menu_solar_site_root"
+              action="action_solar_site"
+              sequence="1"/>
+</odoo>

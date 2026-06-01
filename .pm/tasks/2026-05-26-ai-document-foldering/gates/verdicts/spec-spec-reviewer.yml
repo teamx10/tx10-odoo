@@ -1,0 +1,4 @@
+expert: spec-reviewer
+phase: spec
+blocking: false
+notes: ACs testable and DoD complete; minor notes — AC-8 confidence base=0.65 with floor=0.80 on text (known and correct); zip-bomb protection covered in security.md not spec.md (acceptable split); FOLDER_TEMPLATE node count referenced in architecture.md.

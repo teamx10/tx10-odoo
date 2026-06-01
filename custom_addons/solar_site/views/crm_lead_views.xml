@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Inherit CRM lead form: smart button + Solar Site tab -->
+    <record id="view_crm_lead_form_solar_site" model="ir.ui.view">
+        <field name="name">crm.lead.form.solar_site</field>
+        <field name="model">crm.lead</field>
+        <field name="inherit_id" ref="crm.crm_lead_view_form"/>
+        <field name="arch" type="xml">
+            <!-- Smart button -->
+            <xpath expr="//div[hasclass('oe_button_box')]" position="inside">
+                <button type="object" name="action_open_solar_site"
+                        class="oe_stat_button" icon="fa-sun-o"
+                        invisible="not solar_site_id">
+                    <div class="o_stat_info">
+                        <span class="o_stat_text">Solar Site</span>
+                        <span class="o_stat_value">
+                            <field name="solar_site_status"/>
+                        </span>
+                    </div>
+                </button>
+            </xpath>
+
+            <!-- Solar Site tab in notebook -->
+            <xpath expr="//notebook/page[@name='internal_notes']" position="before">
+                <page string="Solar Site" name="solar_site_tab">
+                    <group>
+                        <group string="Linked Solar Site">
+                            <field name="solar_site_id" readonly="1" invisible="not solar_site_id"/>
+                            <field name="solar_site_status" readonly="1" invisible="not solar_site_id"/>
+                            <field name="ready_for_preliminary_proposal" readonly="1"
+                                   invisible="not solar_site_id"/>
+                        </group>
+                    </group>
+                    <div class="o_row mt8">
+                        <button name="action_create_solar_site"
+                                string="Create Solar Site"
+                                type="object"
+                                class="btn-primary"
+                                invisible="solar_site_id"/>
+                        <button name="action_open_solar_site"
+                                string="Open Solar Site"
+                                type="object"
+                                class="btn-secondary"
+                                invisible="not solar_site_id"/>
+                        <button name="action_link_solar_site"
+                                string="Link Existing"
+                                type="object"
+                                class="btn-secondary"
+                                invisible="solar_site_id"/>
+                    </div>
+                </page>
+            </xpath>
+        </field>
+    </record>
+</odoo>

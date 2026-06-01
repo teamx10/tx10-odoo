@@ -10,4 +10,15 @@
         <field name="active">True</field>
         <field name="priority">5</field>
     </record>
+
+    <record id="ir_cron_classify_documents" model="ir.cron">
+        <field name="name">TX10 AI: Classify pending documents</field>
+        <field name="model_id" ref="solar_project.model_solar_document"/>
+        <field name="state">code</field>
+        <field name="code">model._cron_classify_pending_documents()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">minutes</field>
+        <field name="active">True</field>
+        <field name="priority">10</field>
+    </record>
 </odoo>

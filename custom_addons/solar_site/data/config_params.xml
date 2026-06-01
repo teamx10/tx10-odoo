@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="solar_param_panel_wattage" model="ir.config_parameter">
+        <field name="key">solar_site.default_panel_wattage</field>
+        <field name="value">580</field>
+    </record>
+    <record id="solar_param_panel_area" model="ir.config_parameter">
+        <field name="key">solar_site.default_panel_area</field>
+        <field name="value">2.6</field>
+    </record>
+    <record id="solar_param_area_utilization" model="ir.config_parameter">
+        <field name="key">solar_site.default_area_utilization</field>
+        <field name="value">60.0</field>
+    </record>
+    <record id="solar_param_specific_yield" model="ir.config_parameter">
+        <field name="key">solar_site.default_specific_yield</field>
+        <field name="value">1100</field>
+    </record>
+    <record id="solar_param_qualification_deadline" model="ir.config_parameter">
+        <field name="key">solar_site.default_qualification_deadline</field>
+        <field name="value">1</field>
+    </record>
+    <record id="solar_param_proposal_deadline" model="ir.config_parameter">
+        <field name="key">solar_site.default_proposal_deadline</field>
+        <field name="value">1</field>
+    </record>
+</odoo>

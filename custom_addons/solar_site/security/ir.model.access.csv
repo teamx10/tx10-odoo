@@ -1,0 +1,6 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_solar_site_user,solar.site user,model_solar_site,base.group_user,1,1,1,0
+access_solar_site_manager,solar.site manager,model_solar_site,project.group_project_manager,1,1,1,1
+access_solar_roof_plane_user,solar.roof.plane user,model_solar_roof_plane,base.group_user,1,1,1,0
+access_solar_roof_plane_manager,solar.roof.plane manager,model_solar_roof_plane,project.group_project_manager,1,1,1,1
+access_solar_site_link_wizard_user,solar.site.link.wizard user,model_solar_site_link_wizard,base.group_user,1,1,1,1

@@ -35,7 +35,7 @@ services:
     # No --admin-passwd: the master password gates the DB manager, which is
     #   already disabled via list_db=False in odoo.conf. Keeping it off the
     #   command line avoids leaking it through `docker inspect` / /proc/<pid>/cmdline.
-    command: odoo -d isolar -i solar_demo,tx10_ai --with-demo
+    command: odoo -d isolar -i solar_demo,tx10_ai,solar_site --with-demo
     healthcheck:
       # python3 is guaranteed in the odoo image (curl is not); urllib avoids
       # an always-failing healthcheck that would block depends_on indefinitely.

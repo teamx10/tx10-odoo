@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Demo scenario §22: Petrenко Ivan — Bucha -->
+    <record id="demo_partner_petrenko" model="res.partner">
+        <field name="name">Петренко Іван</field>
+        <field name="city">Буча</field>
+        <field name="street">вул. Яблунева, 5</field>
+        <field name="country_id" ref="base.ua"/>
+    </record>
+
+    <record id="demo_crm_lead_petrenko" model="crm.lead">
+        <field name="name">СЕС для будинку в Бучі — Петренко Іван</field>
+        <field name="partner_id" ref="demo_partner_petrenko"/>
+        <field name="street">вул. Яблунева, 5</field>
+        <field name="city">Буча</field>
+        <field name="country_id" ref="base.ua"/>
+        <field name="stage_id" ref="crm_stage_remote_assessment"/>
+        <field name="description">Клієнт хоче встановити сонячну електростанцію для приватного будинку. Площа даху орієнтовно 120 м².</field>
+    </record>
+
+    <record id="demo_solar_site_petrenko" model="solar.site">
+        <field name="solar_code">SS00001</field>
+        <field name="owner_partner_id" ref="demo_partner_petrenko"/>
+        <field name="contact_person_id" ref="demo_partner_petrenko"/>
+        <field name="street">вул. Яблунева, 5</field>
+        <field name="city">Буча</field>
+        <field name="country_id" ref="base.ua"/>
+        <field name="solar_status">remote_assessment</field>
+        <field name="latitude">50.548</field>
+        <field name="longitude">30.222</field>
+        <field name="panel_wattage_wp">580</field>
+        <field name="panel_area_m2">2.6</field>
+        <field name="area_utilization_pct">60</field>
+        <field name="specific_yield_kwh_kwp">1100</field>
+    </record>
+
+    <!-- Link lead to site -->
+    <record id="demo_crm_lead_petrenko" model="crm.lead">
+        <field name="solar_site_id" ref="demo_solar_site_petrenko"/>
+    </record>
+
+    <record id="demo_roof_plane_south" model="solar.roof.plane">
+        <field name="solar_site_id" ref="demo_solar_site_petrenko"/>
+        <field name="name">South Slope</field>
+        <field name="total_area_m2">80</field>
+        <field name="usable_area_m2">55</field>
+        <field name="orientation">sw</field>
+        <field name="pitch_degrees">25</field>
+        <field name="shading_risk">medium</field>
+    </record>
+</odoo>
