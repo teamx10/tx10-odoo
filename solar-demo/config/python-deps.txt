@@ -1,0 +1,12 @@
+# Python-зависимости Solar EPC демостенда (среда: tx10-odoo/.venv19, Python 3.12.12, uv)
+# База: tx10-odoo/requirements.txt (Odoo 19.0) — уже установлен в .venv19.
+#
+# Внешние зависимости установленных OCA-модулей (по манифестам и фактическим импортам):
+python-dateutil==2.8.2   # maintenance_plan (external_dependencies), fieldservice_recurring (rrule)
+reportlab==4.1.0         # sign_oca (наложение подписи на PDF), генерация демо-PDF; входит в requirements Odoo
+PyPDF2==2.12.1           # sign_oca (через odoo.tools.pdf); входит в requirements Odoo
+#
+# Дополнительно ставить ничего не потребовалось: все версии уже были в .venv19.
+# openupgradelib НЕ нужен: используется только в migrations/ неустановленных модулей
+# (fieldservice_availability, fieldservice_size, rma).
+# Проверка: .venv19/bin/python -c "import dateutil, reportlab, PyPDF2"

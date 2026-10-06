@@ -1,0 +1,6 @@
+odoo https://github.com/odoo/odoo 19.0 29cf86bd012cd3bf2a145a4ae3c6266f2b6f9034
+field-service https://github.com/OCA/field-service 19.0 b8bf7f156b6ce2f18f5c91ee5191bce2319243d7
+maintenance https://github.com/OCA/maintenance 19.0 80e499d54717909b04d8c79a3b3aeb7cc79a3c59
+rma https://github.com/OCA/rma 19.0 48665192678d38293ff05e571404db93ec182a83
+sign https://github.com/OCA/sign 19.0 3b768318bc5eaccb79535337478f49d59d17d0b1
+geospatial https://github.com/OCA/geospatial 19.0 431e59138fb63f771a809e106ead4108549509b1

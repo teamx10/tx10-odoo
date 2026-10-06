@@ -1,0 +1,38 @@
+[options]
+; ───────────── Odoo 19 · Solar EPC демостенд (solar-demo) ─────────────
+; Шаблон без секретов. Рабочая копия: tx10-odoo/odoo19.conf (вне git).
+; admin_passwd подставляет solar-demo/scripts/render-conf.sh из solar-demo/.secrets
+admin_passwd = __MASTER_PASSWD__
+
+db_host = 127.0.0.1
+db_port = 5432
+db_user = odoo
+db_password = __DB_PASSWORD__
+db_name = solar_epc_demo19
+dbfilter = ^solar_epc_demo19$
+; менеджер БД отключён: бэкап/восстановление — через scripts/
+list_db = False
+
+; OCA — первыми, затем ядро
+addons_path = /Users/temich/dev/tx10/tx10-odoo/solar-demo/oca/field-service,/Users/temich/dev/tx10/tx10-odoo/solar-demo/oca/maintenance,/Users/temich/dev/tx10/tx10-odoo/solar-demo/oca/rma,/Users/temich/dev/tx10/tx10-odoo/solar-demo/oca/sign,/Users/temich/dev/tx10/tx10-odoo/solar-demo/oca/geospatial,/Users/temich/dev/tx10/tx10-odoo/addons,/Users/temich/dev/tx10/tx10-odoo/odoo/addons
+; filestore → .odoo-data/filestore/solar_epc_demo19 (отдельный каталог на БД)
+data_dir = /Users/temich/dev/tx10/tx10-odoo/.odoo-data
+
+http_interface = 127.0.0.1
+http_port = 8069
+workers = 0
+limit_time_cpu = 600
+limit_time_real = 1200
+
+log_level = info
+logfile = /Users/temich/dev/tx10/tx10-odoo/.odoo-data/odoo19.log
+
+; ───── Блокировка исходящей почты ─────
+; Порт 2 на 127.0.0.1 никто не слушает → любой SMTP-коннект получает
+; Connection refused, письма остаются в mail.mail со state=exception.
+smtp_server = 127.0.0.1
+smtp_port = 2
+smtp_ssl = False
+email_from = demo-solar@example.invalid
+
+proxy_mode = True
